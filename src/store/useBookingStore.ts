@@ -6,6 +6,7 @@ export type Service = {
   duration: number;
   price: string;
   category?: string;
+  categoryId?: string;
 };
 
 export type Staff = {
@@ -13,6 +14,7 @@ export type Staff = {
   name: string;
   avatarUrl?: string;
   timeOffDates?: string[];
+  skills?: string[];
 };
 
 interface BookingState {

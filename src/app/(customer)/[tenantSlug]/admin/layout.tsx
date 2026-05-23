@@ -24,7 +24,8 @@ import {
   ShieldAlert,
   BarChart3,
   ClipboardCheck,
-  MessageSquare
+  MessageSquare,
+  Banknote
 } from "lucide-react";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 import { logoutAdmin } from "@/actions/auth";
@@ -158,7 +159,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const enabledFeatures = (() => {
     try {
-      return JSON.parse(tenant?.enabledFeatures || "[]");
+      const raw = tenant?.enabledFeatures;
+      if (!raw) return [];
+      return Array.isArray(raw) ? raw : JSON.parse(raw);
     } catch (e) { return []; }
   })();
 
@@ -166,13 +169,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "Dashboard", href: `/${tenantSlug}/admin`, icon: LayoutDashboard },
     { name: "Calendar", href: `/${tenantSlug}/admin/calendar`, icon: CalendarDays },
     { name: "Appointments", href: `/${tenantSlug}/admin/appointments`, icon: ListTodo },
-    { name: "Reports", href: `/${tenantSlug}/admin/reports`, icon: BarChart3, featureId: "reports" },
+    { name: "Reports", href: `/${tenantSlug}/admin/reports`, icon: BarChart3 },
     { name: "Customers", href: `/${tenantSlug}/admin/customers`, icon: User },
     { name: "Services", href: `/${tenantSlug}/admin/services`, icon: Sparkles },
     { name: "Staff", href: `/${tenantSlug}/admin/staff`, icon: Users, featureId: "staff" },
     { name: "Attendance", href: `/${tenantSlug}/admin/attendance`, icon: ClipboardCheck, featureId: "attendance" },
     { name: "Promotions", href: `/${tenantSlug}/admin/promotions`, icon: Tag, featureId: "promotions" },
     { name: "Working Hours", href: `/${tenantSlug}/admin/working-hours`, icon: Clock, featureId: "workingHours" },
+    { name: "Payroll", href: `/${tenantSlug}/admin/payroll`, icon: Banknote },
     { name: "Support & Feedback", href: `/${tenantSlug}/admin/support`, icon: MessageSquare },
     { name: "Settings", href: `/${tenantSlug}/admin/settings`, icon: Settings },
   ].filter(item => !item.featureId || enabledFeatures.includes(item.featureId));
@@ -251,7 +255,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </button>
         </div>
         
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-4 py-6 space-y-2.5 overflow-y-auto">
           {navigation.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
@@ -260,14 +264,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 key={item.name}
                 href={item.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors ${
+                className={`flex items-center gap-3 w-full p-2 rounded-full font-semibold transition-colors group ${
                   isActive 
-                    ? "bg-primary/10 text-primary" 
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    ? 'bg-primary/20 text-primary shadow-sm'
+                    : (isDarkMode ? 'bg-zinc-800/50 text-gray-400 hover:bg-primary/10 hover:text-primary' : 'bg-primary/5 text-gray-700 hover:bg-primary/10 hover:text-primary')
                 }`}
               >
-                <Icon size={20} className={isActive ? "text-primary" : "text-gray-400"} />
-                {item.name}
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+                  isActive 
+                    ? 'bg-primary/30' 
+                    : (isDarkMode ? 'bg-zinc-700 group-hover:bg-primary/20' : 'bg-primary/10 group-hover:bg-primary/20')
+                }`}>
+                  <Icon size={18} className={isActive ? "text-primary" : (isDarkMode ? "text-gray-400 group-hover:text-primary" : "text-gray-600 group-hover:text-primary")} />
+                </div>
+                <span className="text-left flex-1 truncate text-[14.5px] pr-2">{item.name}</span>
               </Link>
             );
           })}

@@ -15,7 +15,7 @@ export async function getSuperAdminUsers() {
         createdAt: true,
       }
     });
-    return { success: true, data: users };
+    return { success: true, data: JSON.parse(JSON.stringify(users)) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

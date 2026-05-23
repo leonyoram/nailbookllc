@@ -1,4 +1,5 @@
 "use client";
+import toast from "react-hot-toast";
 
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
@@ -90,6 +91,7 @@ export default function CustomersPage() {
         });
 
         if (result.success) {
+        toast.success("Action completed successfully!");
           await fetchCustomers(tenant.id);
           closeForm();
         } else {
@@ -104,6 +106,7 @@ export default function CustomersPage() {
         });
 
         if (result.success) {
+        toast.success("Action completed successfully!");
           await fetchCustomers(tenant.id);
           closeForm();
         } else {
@@ -143,6 +146,7 @@ export default function CustomersPage() {
     try {
       const result = await deleteCustomer(id);
       if (result.success) {
+        toast.success("Action completed successfully!");
         setCustomers(customers.filter(c => c.id !== id));
         setSelectedIds(prev => prev.filter(selId => selId !== id));
       } else {
@@ -162,6 +166,7 @@ export default function CustomersPage() {
     try {
       const result = await deleteCustomers(selectedIds);
       if (result.success) {
+        toast.success("Action completed successfully!");
         await fetchCustomers(tenant.id);
       } else {
         alert(result.error);
@@ -236,6 +241,7 @@ export default function CustomersPage() {
 
       const result = await importCustomers(tenant.id, parsedCustomers);
       if (result.success) {
+        toast.success("Action completed successfully!");
         alert(`Successfully imported ${result.count} customers!`);
         await fetchCustomers(tenant.id);
       } else {

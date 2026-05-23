@@ -6,11 +6,11 @@ async function main() {
 
   // 1. Create a default tenant
   const tenant = await prisma.tenant.upsert({
-    where: { slug: 'vici-checkin' },
+    where: { slug: 'demo-salon' },
     update: {},
     create: {
-      name: 'Vici Checkin Salon',
-      slug: 'vici-checkin',
+      name: 'Demo Beauty Salon',
+      slug: 'demo-salon',
       adminEmail: 'admin@vici.com',
       adminPassword: 'password123', // Remember to hash this in production
       themeColor: '#be2230',

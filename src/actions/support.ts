@@ -15,7 +15,7 @@ export async function sendSupportMessage(tenantId: string, sender: "ADMIN" | "SU
 
     revalidatePath(`/${tenantId}/admin/support`);
     revalidatePath(`/super-admin`);
-    return { success: true, data: message };
+    return { success: true, data: JSON.parse(JSON.stringify(message)) };
   } catch (error: any) {
     console.error("Failed to send support message:", error);
     return { success: false, error: "System error while sending message" };
@@ -28,7 +28,7 @@ export async function getSupportMessages(tenantId: string) {
       where: { tenantId },
       orderBy: { createdAt: "asc" }
     });
-    return { success: true, data: messages };
+    return { success: true, data: JSON.parse(JSON.stringify(messages)) };
   } catch (error) {
     return { success: false, error: "Failed to fetch messages" };
   }

@@ -15,7 +15,7 @@ export async function getAttendanceByDate(tenantId: string, date: string) {
     const attendances = await prisma.attendance.findMany({
       where: {
         tenantId,
-        date
+        date: new Date(date)
       }
     });
 
@@ -29,14 +29,14 @@ export async function getAttendanceByDate(tenantId: string, date: string) {
         staffId: staff.id,
         staffName: staff.name,
         role: staff.role,
-        clockIn: record?.clockIn || "",
-        clockOut: record?.clockOut || "",
+        clockIn: record?.clockIn ? record.clockIn.toISOString().substring(11, 16) : "",
+        clockOut: record?.clockOut ? record.clockOut.toISOString().substring(11, 16) : "",
         status: record?.status || "Present",
         notes: record?.notes || "",
       };
     });
 
-    return { success: true, data: result };
+    return { success: true, data: JSON.parse(JSON.stringify(result)) };
   } catch (error) {
     console.error("Failed to fetch attendance:", error);
     return { success: false, error: "Failed to fetch attendance data" };
@@ -66,28 +66,28 @@ export async function upsertAttendance({
         tenantId_staffId_date: {
           tenantId,
           staffId,
-          date
+          date: new Date(date)
         }
       },
       update: {
-        clockIn,
-        clockOut,
-        status,
+        clockIn: clockIn ? new Date(`1970-01-01T${clockIn}:00Z`) : null,
+        clockOut: clockOut ? new Date(`1970-01-01T${clockOut}:00Z`) : null,
+        status: status as any,
         notes
       },
       create: {
         tenantId,
         staffId,
-        date,
-        clockIn,
-        clockOut,
-        status: status || "Present",
+        date: new Date(date),
+        clockIn: clockIn ? new Date(`1970-01-01T${clockIn}:00Z`) : null,
+        clockOut: clockOut ? new Date(`1970-01-01T${clockOut}:00Z`) : null,
+        status: (status || "Present") as any,
         notes
       }
     });
 
     revalidatePath(`/[tenantSlug]/admin/attendance`, "page");
-    return { success: true, data: record };
+    return { success: true, data: JSON.parse(JSON.stringify(record)) };
   } catch (error) {
     console.error("Failed to upsert attendance:", error);
     return { success: false, error: "Failed to save attendance" };
@@ -99,17 +99,20 @@ export async function getMonthlyAttendance(tenantId: string, staffId: string, ye
     const monthStr = month.toString().padStart(2, "0");
     const prefix = `${year}-${monthStr}-`;
 
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const nextYear = month === 12 ? year + 1 : year;
     const records = await prisma.attendance.findMany({
       where: {
         tenantId,
         staffId,
         date: {
-          startsWith: prefix
+          gte: new Date(`${year}-${monthStr}-01`),
+          lt: new Date(`${nextYear}-${nextMonth.toString().padStart(2, "0")}-01`)
         }
       }
     });
 
-    return { success: true, data: records };
+    return { success: true, data: JSON.parse(JSON.stringify(records)) };
   } catch (error) {
     console.error("Failed to fetch monthly attendance:", error);
     return { success: false, error: "Failed to fetch data" };

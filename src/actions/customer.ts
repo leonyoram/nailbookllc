@@ -164,7 +164,6 @@ export async function importCustomers(tenantId: string, customersData: { name: s
 
     const result = await prisma.customer.createMany({
       data,
-      skipDuplicates: true,
     });
 
     revalidatePath("/[tenantSlug]/admin/customers", "page");

@@ -26,11 +26,22 @@ export async function createStaff(tenantId: string, data: any) {
         phone: data.phone || null,
         workHours: data.workHours || '{"Monday":"09:00 - 18:00","Tuesday":"09:00 - 18:00","Wednesday":"09:00 - 18:00","Thursday":"09:00 - 18:00","Friday":"09:00 - 18:00","Saturday":"Off","Sunday":"Off"}',
         dayOff: data.dayOff || "None",
+        baseSalary: data.baseSalary ? parseFloat(data.baseSalary) : 0,
+        salaryType: data.salaryType || "Commission",
+        salaryCycle: data.salaryCycle || "Monthly",
+        commissionRate: data.commissionRate ? parseFloat(data.commissionRate) : 0,
+        skills: data.skills ? JSON.stringify(data.skills) : null,
       },
     });
 
+    if (data.loginPassword) {
+      await prisma.$executeRaw`UPDATE "Staff" SET "loginPassword" = ${data.loginPassword} WHERE "id" = ${staff.id}`;
+    } else if (data.loginPassword === "") {
+      await prisma.$executeRaw`UPDATE "Staff" SET "loginPassword" = NULL WHERE "id" = ${staff.id}`;
+    }
+
     revalidatePath("/[tenantSlug]/admin/staff", "page");
-    return { success: true, staff };
+    return { success: true, staff: JSON.parse(JSON.stringify(staff)) };
   } catch (error) {
     console.error("Failed to create staff:", error);
     return { success: false, error: "System error while creating staff" };
@@ -47,11 +58,22 @@ export async function updateStaff(id: string, data: any) {
         phone: data.phone || null,
         workHours: data.workHours || '{"Monday":"09:00 - 18:00","Tuesday":"09:00 - 18:00","Wednesday":"09:00 - 18:00","Thursday":"09:00 - 18:00","Friday":"09:00 - 18:00","Saturday":"Off","Sunday":"Off"}',
         dayOff: data.dayOff || "None",
+        baseSalary: data.baseSalary !== undefined ? parseFloat(data.baseSalary) : undefined,
+        salaryType: data.salaryType !== undefined ? data.salaryType : undefined,
+        salaryCycle: data.salaryCycle !== undefined ? data.salaryCycle : undefined,
+        commissionRate: data.commissionRate !== undefined ? parseFloat(data.commissionRate) : undefined,
+        skills: data.skills !== undefined ? (data.skills ? JSON.stringify(data.skills) : null) : undefined,
       },
     });
 
+    if (data.loginPassword) {
+      await prisma.$executeRaw`UPDATE "Staff" SET "loginPassword" = ${data.loginPassword} WHERE "id" = ${staff.id}`;
+    } else if (data.loginPassword === "") {
+      await prisma.$executeRaw`UPDATE "Staff" SET "loginPassword" = NULL WHERE "id" = ${staff.id}`;
+    }
+
     revalidatePath("/[tenantSlug]/admin/staff", "page");
-    return { success: true, staff };
+    return { success: true, staff: JSON.parse(JSON.stringify(staff)) };
   } catch (error) {
     console.error("Failed to update staff:", error);
     return { success: false, error: "System error while updating staff" };

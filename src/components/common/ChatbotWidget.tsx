@@ -1,7 +1,8 @@
 "use client";
 
-import { MessageSquare, X, Send } from "lucide-react";
-import { useState, useEffect } from "react";
+import { MessageSquare, X, Send, Bot, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { processChat } from "@/actions/chat";
 
 interface ChatbotWidgetProps {
   tenant: any;
@@ -11,11 +12,14 @@ export function ChatbotWidget({ tenant }: ChatbotWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [config, setConfig] = useState<any>(null);
   const [chatHistory, setChatHistory] = useState<{role: 'bot'|'user', text: string}[]>([]);
+  const [inputMessage, setInputMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (tenant?.chatbotConfig) {
       try {
-        setConfig(JSON.parse(tenant.chatbotConfig));
+        setConfig(typeof tenant.chatbotConfig === 'string' ? JSON.parse(tenant.chatbotConfig) : tenant.chatbotConfig);
       } catch (e) {
         console.error("Failed to parse chatbot config", e);
       }
@@ -24,18 +28,22 @@ export function ChatbotWidget({ tenant }: ChatbotWidgetProps) {
 
   useEffect(() => {
     if (isOpen && config && chatHistory.length === 0) {
-      setChatHistory([{ role: 'bot', text: config.welcomeMessage || "Hello! How can we help you today?" }]);
+      setChatHistory([{ role: 'bot', text: config.welcomeMessage || "Xin chào! Tôi có thể giúp gì cho bạn hôm nay?" }]);
     }
   }, [isOpen, config]);
+
+  useEffect(() => {
+    if (isOpen) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [chatHistory, isOpen, isLoading]);
 
   if (!tenant?.chatbotEnabled || !config) return null;
 
   const defaultFaq = [
-    { q: "I want to book an appointment", a: "Yes, you can click the 'Start Live Chat' button below to talk to our support staff, or book directly through our website!" },
-    { q: "Service pricing", a: "Service pricing depends on specific requirements. Please chat with us for more details." },
-    { q: "Opening hours", a: "We are open from 9:00 AM to 8:00 PM every day." },
-    { q: "Where are you located?", a: "Please scroll to the bottom of the website or click the Chat button to get our exact location." },
-    { q: "I need more consultation", a: "Yes, please click the 'Start Live Chat' button below and our staff will support you immediately!" }
+    { q: "Tôi muốn đặt lịch", a: "Tuyệt vời! Bạn có thể sử dụng tính năng Đặt lịch trên website hoặc để lại số điện thoại, nhân viên sẽ liên hệ lại nha." },
+    { q: "Giá dịch vụ thế nào?", a: "Giá dịch vụ phụ thuộc vào yêu cầu cụ thể. Bạn vui lòng xem bảng giá trên web nhé." },
+    { q: "Giờ mở cửa", a: "Tiệm mở cửa từ 9:00 AM đến 8:00 PM mỗi ngày." }
   ];
 
   const faq = config.faq || defaultFaq;
@@ -44,106 +52,153 @@ export function ChatbotWidget({ tenant }: ChatbotWidgetProps) {
     setIsOpen(!isOpen);
   };
 
-  const handleQuestionClick = (item: any) => {
+  const handleQuestionClick = async (item: any) => {
     setChatHistory(prev => [
       ...prev,
       { role: 'user', text: item.q },
       { role: 'bot', text: item.a }
     ]);
-    
-    // Auto scroll to bottom
-    setTimeout(() => {
-      const chatContainer = document.getElementById('chat-history-container');
-      if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
-    }, 100);
+  };
+
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!inputMessage.trim()) return;
+
+    const userMsg = inputMessage.trim();
+    setInputMessage("");
+    setChatHistory(prev => [...prev, { role: 'user', text: userMsg }]);
+    setIsLoading(true);
+
+    try {
+      const response = await processChat(tenant.id, userMsg);
+      if (response.success && response.reply) {
+        setChatHistory(prev => [...prev, { role: 'bot', text: response.reply }]);
+      } else {
+        setChatHistory(prev => [...prev, { role: 'bot', text: response.reply || "Xin lỗi, tôi đang gặp lỗi kết nối." }]);
+      }
+    } catch (error) {
+      setChatHistory(prev => [...prev, { role: 'bot', text: "Xin lỗi, hiện tại tôi không thể trả lời. Vui lòng thử lại sau." }]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleStartLiveChat = () => {
     if (config.type === 'whatsapp') {
-      const phone = config.value.replace(/[^0-9]/g, '');
-      const url = `https://wa.me/${phone}`;
-      window.open(url, '_blank');
+      const phone = config.value?.replace(/[^0-9]/g, '');
+      if (phone) window.open(`https://wa.me/${phone}`, '_blank');
     } else if (config.type === 'messenger') {
       const url = `https://m.me/${config.value}`;
       window.open(url, '_blank');
-    } else if (config.type === 'script') {
-      if (config.value.startsWith('http')) {
-        window.open(config.value, '_blank');
-      }
     }
   };
 
   return (
     <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end gap-4">
-      {/* Welcome Bubble */}
+      {/* Chat Window */}
       {isOpen && (
-        <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 w-80 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <div className="p-4 bg-primary text-white flex justify-between items-center shadow-md z-10 relative">
+        <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 w-80 sm:w-96 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300 flex flex-col h-[500px] max-h-[80vh]">
+          {/* Header */}
+          <div className="p-4 bg-primary text-white flex justify-between items-center shadow-md z-10 shrink-0">
             <div className="flex items-center gap-2">
-              <MessageSquare size={18} />
-              <span className="font-bold text-sm">{tenant.name || "Chat with us"}</span>
+              <Bot size={20} />
+              <div>
+                <div className="font-bold text-sm">{tenant.name || "Chatbot AI"}</div>
+                <div className="text-[10px] text-white/80">Trợ lý ảo 24/7</div>
+              </div>
             </div>
-            <button onClick={() => setIsOpen(false)} className="hover:rotate-90 transition-transform">
+            <button onClick={() => setIsOpen(false)} className="hover:bg-white/20 p-1 rounded-md transition-colors">
               <X size={18} />
             </button>
           </div>
           
-          <div id="chat-history-container" className="p-5 space-y-4 max-h-[350px] overflow-y-auto bg-gray-50/50 flex-col flex scroll-smooth">
-            {/* Chat History */}
+          {/* Messages Area */}
+          <div className="flex-1 p-4 overflow-y-auto bg-gray-50/50 flex-col flex gap-4 scroll-smooth">
+            {chatHistory.length === 1 && (
+              <div className="space-y-2 mb-2">
+                <p className="text-xs text-gray-500 font-medium text-center mb-3">Câu hỏi thường gặp</p>
+                <div className="flex flex-col gap-2">
+                  {faq.map((item: any, idx: number) => item.q?.trim() !== "" ? (
+                    <button
+                      key={idx}
+                      onClick={() => handleQuestionClick(item)}
+                      className="text-left p-2.5 bg-white border border-primary/20 hover:border-primary text-primary rounded-xl text-sm transition-colors shadow-sm"
+                    >
+                      {item.q}
+                    </button>
+                  ) : null)}
+                </div>
+              </div>
+            )}
+
             {chatHistory.map((msg, idx) => (
               <div key={idx} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`p-3 rounded-2xl max-w-[85%] text-sm leading-relaxed shadow-sm ${
                   msg.role === 'user' 
                     ? 'bg-primary text-white rounded-tr-sm' 
-                    : 'bg-white border border-gray-100 text-gray-700 rounded-tl-sm'
+                    : 'bg-white border border-gray-200 text-gray-800 rounded-tl-sm'
                 }`}>
                   {msg.text}
                 </div>
               </div>
             ))}
-
-            {/* FAQ Buttons */}
-            <div className="space-y-2 pt-2 flex flex-col items-end">
-              {faq.map((item: any, idx: number) => item.q?.trim() !== "" ? (
-                <button
-                  key={idx}
-                  onClick={() => handleQuestionClick(item)}
-                  className="w-[90%] text-left p-2.5 bg-primary/5 hover:bg-primary/10 border border-primary/20 hover:border-primary/40 rounded-2xl rounded-tr-sm transition-colors group flex items-start justify-between gap-2"
-                >
-                  <span className="text-sm text-gray-800 group-hover:text-primary transition-colors leading-tight">
-                    {item.q}
-                  </span>
-                  <Send size={14} className="text-primary/50 group-hover:text-primary shrink-0 mt-0.5" />
-                </button>
-              ) : null)}
-            </div>
+            
+            {isLoading && (
+              <div className="flex w-full justify-start">
+                <div className="p-3 bg-white border border-gray-200 text-gray-800 rounded-2xl rounded-tl-sm shadow-sm flex items-center gap-2">
+                  <Loader2 size={14} className="animate-spin text-primary" />
+                  <span className="text-xs text-gray-500">Đang trả lời...</span>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
           </div>
           
-          <div className="p-4 bg-white border-t border-gray-100 flex flex-col gap-2">
-             <button 
-                onClick={handleStartLiveChat}
-                className="w-full py-2.5 bg-primary text-white rounded-xl text-sm font-bold shadow-md hover:bg-primary-dark transition-colors flex items-center justify-center gap-2"
+          {/* Input Area */}
+          <div className="p-3 bg-white border-t border-gray-100 shrink-0">
+            <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                placeholder="Nhập câu hỏi..."
+                className="flex-1 border border-gray-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                disabled={isLoading}
+              />
+              <button 
+                type="submit"
+                disabled={!inputMessage.trim() || isLoading}
+                className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors shrink-0"
               >
-                <MessageSquare size={16} />
-                Start Live Chat
+                <Send size={16} className="ml-1" />
               </button>
-             <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider text-center block mt-1">Powered by Nail Book 24/7</span>
+            </form>
+            
+            {config.value && (
+              <button 
+                type="button"
+                onClick={handleStartLiveChat}
+                className="w-full mt-2 py-1.5 text-xs text-primary font-medium hover:underline flex items-center justify-center gap-1"
+              >
+                <MessageSquare size={12} />
+                Hoặc Chat với nhân viên (Live Chat)
+              </button>
+            )}
           </div>
         </div>
       )}
 
       {/* Floating Button */}
-      <button
-        onClick={handleOpenBot}
-        className="w-14 h-14 rounded-full bg-primary text-white shadow-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300 relative group"
-        title="Chat with us"
-      >
-        <MessageSquare size={28} />
-        <span className="absolute right-full mr-4 px-3 py-1.5 bg-gray-900 text-white text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-          How can we help?
-        </span>
-        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-bounce" />
-      </button>
+      {!isOpen && (
+        <button
+          onClick={handleOpenBot}
+          className="w-14 h-14 rounded-full bg-primary text-white shadow-[0_8px_30px_rgb(0,0,0,0.12)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-300 relative group"
+        >
+          <Bot size={28} />
+          <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse" />
+        </button>
+      )}
     </div>
   );
 }
+

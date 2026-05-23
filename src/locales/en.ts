@@ -9,7 +9,19 @@ export const en = {
     yourInfo: "Your Information",
     paymentMethod: "Payment Method",
     confirmation: "Confirmation",
-    checkout: "Checkout"
+    checkout: "Checkout",
+    selectDate: "Select Date",
+    selectTime: "Select Time",
+    continue: "Continue",
+    reviewConfirm: "Review & Confirm",
+    scheduledTime: "Scheduled Time",
+    staffMember: "Staff Member",
+    services: "Services",
+    finalTotal: "Final Total",
+    bookAnother: "Book Another",
+    bookingConfirmed: "Booking Confirmed!",
+    anyStaff: "Any Available Staff",
+    at: "at"
   },
   service: {
     loading: "Loading services...",

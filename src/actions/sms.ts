@@ -2,13 +2,22 @@
 
 import twilio from 'twilio';
 import { getSystemSettings } from './settings';
+import { prisma } from '@/lib/prisma';
 
 /**
  * Send SMS to one or more customers using Twilio.
  * Configuration is fetched from SystemSettings managed by Super Admin.
  */
-export async function sendSMSPromotion(message: string, recipients: string[]) {
+export async function sendSMSPromotion(tenantId: string, message: string, recipients: string[]) {
   try {
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) return { success: false, error: 'Tenant not found' };
+    
+    // Check quota
+    if (tenant.smsLimit !== -1 && tenant.smsSent + recipients.length > tenant.smsLimit) {
+      return { success: false, error: `SMS Quota exceeded. You have ${tenant.smsLimit - tenant.smsSent} messages remaining.` };
+    }
+
     const settings = await getSystemSettings();
     
     if (!settings || !settings.twilioSid || !settings.twilioAuthToken || !settings.twilioPhone) {
@@ -48,6 +57,13 @@ export async function sendSMSPromotion(message: string, recipients: string[]) {
        };
     }
 
+    if (successful > 0) {
+      await prisma.tenant.update({
+        where: { id: tenantId },
+        data: { smsSent: { increment: successful } }
+      });
+    }
+
     return {
       success: true,
       message: `Successfully sent ${successful} messages. ${failed > 0 ? `${failed} messages failed.` : ''}`,
@@ -68,8 +84,16 @@ export async function sendSMSPromotion(message: string, recipients: string[]) {
 /**
  * Send a single SMS message.
  */
-export async function sendSMS(to: string, message: string) {
+export async function sendSMS(tenantId: string, to: string, message: string) {
   try {
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) return { success: false, error: 'Tenant not found' };
+    
+    // Check quota
+    if (tenant.smsLimit !== -1 && tenant.smsSent >= tenant.smsLimit) {
+      return { success: false, error: 'SMS Quota exceeded.' };
+    }
+
     const settings = await getSystemSettings();
     if (!settings || !settings.twilioSid || !settings.twilioAuthToken || !settings.twilioPhone) {
       return { success: false, error: 'Twilio settings not configured' };
@@ -80,6 +104,11 @@ export async function sendSMS(to: string, message: string) {
       body: message,
       from: settings.twilioPhone,
       to,
+    });
+
+    await prisma.tenant.update({
+      where: { id: tenantId },
+      data: { smsSent: { increment: 1 } }
     });
 
     return { success: true, sid: result.sid };

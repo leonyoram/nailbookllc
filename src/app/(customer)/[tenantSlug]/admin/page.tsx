@@ -1,4 +1,5 @@
 "use client";
+import toast from "react-hot-toast";
 
 import { Users, CalendarCheck, TrendingUp, DollarSign, X, CheckSquare, Square, Send, Loader2, RefreshCw, Gift } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -99,8 +100,9 @@ export default function AdminDashboardPage() {
     }
 
     try {
-      const result = await sendSMSPromotion(smsText, phoneNumbers);
+      const result = await sendSMSPromotion(tenant.id, smsText, phoneNumbers);
       if (result.success) {
+        toast.success("Action completed successfully!");
         alert(result.message);
         setShowSmsModal(false);
         setSmsText("");
@@ -122,6 +124,7 @@ export default function AdminDashboardPage() {
     try {
       const result = await updateBookingStatus(id, newStatus, tenant.id);
       if (result.success) {
+        toast.success("Action completed successfully!");
         setRecentBookings(recentBookings.map(b => b.id === id ? { ...b, status: newStatus } : b));
       } else {
         alert(result.error);
@@ -140,6 +143,7 @@ export default function AdminDashboardPage() {
     try {
       const result = await updateLuckyWheel(tenant.id, { enabled: !tenant.luckyWheelEnabled });
       if (result.success) {
+        toast.success("Action completed successfully!");
         setTenant(result.data);
       } else {
         alert(result.error);
@@ -214,7 +218,7 @@ export default function AdminDashboardPage() {
                         }`}
                       >
                         <option value="Pending">Pending</option>
-                        <option value="Approved">Approved</option>
+                        <option value="Confirmed">Confirmed</option>
                         <option value="Reject">Reject</option>
                       </select>
                     </div>
@@ -276,6 +280,28 @@ export default function AdminDashboardPage() {
                 <p className="text-xs text-gray-500">Broadcast to customers</p>
               </div>
             </button>
+            {/* SMS Status Card */}
+            {tenant?.smsEnabled && (
+              <div className="w-full p-4 rounded-xl border border-gray-200 flex flex-col gap-2">
+                <div className="flex justify-between items-center text-sm font-medium">
+                  <span className="text-gray-700">SMS Quota</span>
+                  <span className="text-gray-900 font-bold">
+                    {tenant.smsSent} / {tenant.smsLimit === -1 ? 'Unlimited' : tenant.smsLimit}
+                  </span>
+                </div>
+                {tenant.smsLimit !== -1 && (
+                  <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                    <div 
+                      className={`h-full ${tenant.smsSent >= tenant.smsLimit ? 'bg-red-500' : 'bg-primary'}`}
+                      style={{ width: `${Math.min(100, (tenant.smsSent / tenant.smsLimit) * 100)}%` }}
+                    ></div>
+                  </div>
+                )}
+                {tenant.smsLimit !== -1 && tenant.smsSent >= tenant.smsLimit && (
+                  <p className="text-xs text-red-500 mt-1">Quota exceeded! Please contact Admin.</p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Lucky Wheel Status Card */}
@@ -377,6 +403,11 @@ export default function AdminDashboardPage() {
             </div>
 
             <div className="p-6 overflow-y-auto space-y-6">
+              {tenant?.smsLimit !== -1 && selectedCustomers.length > (tenant?.smsLimit - tenant?.smsSent) && (
+                 <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+                   Warning: You are selecting more recipients ({selectedCustomers.length}) than your remaining SMS quota ({Math.max(0, tenant?.smsLimit - tenant?.smsSent)}). Only a portion will be sent, or the action may fail.
+                 </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Message Content</label>
                 <textarea 

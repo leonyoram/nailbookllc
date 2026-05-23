@@ -1,9 +1,11 @@
 "use client";
+import toast from "react-hot-toast";
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Settings, Save, Clock, Calendar, MapPin, Phone, Palette, Loader2, CheckCircle, DollarSign, Share2, MessageSquare } from "lucide-react";
-import { getTenantBySlug, updateTenantSettings } from "@/actions/tenant";
+import { getTenantBySlug, updateTenantSettings, topUpSmsLimit } from "@/actions/tenant";
+import { sendSupportMessage } from "@/actions/support";
 
 export default function SettingsPage() {
   const params = useParams();
@@ -14,6 +16,68 @@ export default function SettingsPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [tenant, setTenant] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("general");
+  const [showSmsModal, setShowSmsModal] = useState(false);
+  const [isBuyingSms, setIsBuyingSms] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [isUpgrading, setIsUpgrading] = useState(false);
+
+  const handleBuySms = async (amount: number, price: number) => {
+    if (!tenant) return;
+    setIsBuyingSms(true);
+    
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenantId: tenant.id,
+          type: 'sms',
+          amount,
+          price
+        })
+      });
+      const data = await res.json();
+      
+      if (data.success && data.url) {
+        window.location.href = data.url;
+      } else {
+        toast.error(data.error || "Failed to initiate payment.");
+        setIsBuyingSms(false);
+      }
+    } catch (error) {
+      toast.error("System error.");
+      setIsBuyingSms(false);
+    }
+  };
+
+  const handleUpgradePlan = async (planName: string, price: number) => {
+    if (!tenant) return;
+    setIsUpgrading(true);
+    
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenantId: tenant.id,
+          type: 'upgrade',
+          planName,
+          price
+        })
+      });
+      const data = await res.json();
+      
+      if (data.success && data.url) {
+        window.location.href = data.url;
+      } else {
+        toast.error(data.error || "Failed to initiate upgrade.");
+        setIsUpgrading(false);
+      }
+    } catch (error) {
+      toast.error("System error.");
+      setIsUpgrading(false);
+    }
+  };
 
   // Form State
   const [formData, setFormData] = useState<any>({
@@ -52,7 +116,8 @@ export default function SettingsPage() {
     },
     adminEmail: "",
     adminPassword: "",
-    itPassword: ""
+    itPassword: "",
+    smsTemplates: { winbackDiscount: "5" }
   });
 
   const [enabledPayments, setEnabledPayments] = useState<string[]>([]);
@@ -66,7 +131,7 @@ export default function SettingsPage() {
         // Parse payments list
         let payments: string[] = [];
         try {
-          payments = t.payments ? JSON.parse(t.payments) : [];
+          payments = t.payments ? (typeof t.payments === 'string' ? JSON.parse(t.payments) : t.payments) : [];
         } catch (e) {
           payments = t.payments ? t.payments.split(',') : [];
         }
@@ -80,11 +145,11 @@ export default function SettingsPage() {
         };
         if (t.paymentConfig) {
           try {
-            config = { ...config, ...JSON.parse(t.paymentConfig) };
+            config = { ...config, ...(typeof t.paymentConfig === 'string' ? JSON.parse(t.paymentConfig) : t.paymentConfig) };
           } catch (e) {}
         }
 
-          const parsedConfig = t.chatbotConfig ? JSON.parse(t.chatbotConfig) : {};
+          const parsedConfig = t.chatbotConfig ? (typeof t.chatbotConfig === 'string' ? JSON.parse(t.chatbotConfig) : t.chatbotConfig) : {};
           setFormData({
             name: t.name || "",
             location: t.location || "",
@@ -95,7 +160,7 @@ export default function SettingsPage() {
             logo: t.logo || "",
             googleReviewUrl: t.googleReviewUrl || "",
             paymentConfig: config,
-            socialLinks: t.socialLinks ? JSON.parse(t.socialLinks) : {
+            socialLinks: t.socialLinks ? (typeof t.socialLinks === 'string' ? JSON.parse(t.socialLinks) : t.socialLinks) : {
               facebook: "",
               instagram: "",
               tiktok: "",
@@ -120,13 +185,19 @@ export default function SettingsPage() {
             itPassword: t.itPassword || "",
             enabledFeatures: (() => {
               try {
-                return JSON.parse(t.enabledFeatures || "[]");
+                return typeof t.enabledFeatures === 'string' ? JSON.parse(t.enabledFeatures || "[]") : (t.enabledFeatures || []);
               } catch (e) { return []; }
+            })(),
+            smsTemplates: (() => {
+              try {
+                const parsed = typeof t.smsTemplates === 'string' ? JSON.parse(t.smsTemplates || "{}") : (t.smsTemplates || {});
+                return { winbackDiscount: "5", ...parsed };
+              } catch (e) { return { winbackDiscount: "5" }; }
             })()
           });
           
           // If payments is disabled by Super Admin, override local enabledPayments to just "Pay in Store"
-          const features = t.enabledFeatures ? JSON.parse(t.enabledFeatures) : [];
+          const features = t.enabledFeatures ? (typeof t.enabledFeatures === 'string' ? JSON.parse(t.enabledFeatures) : t.enabledFeatures) : [];
           if (!features.includes("payments")) {
             setEnabledPayments(["Pay in Store"]);
           }
@@ -146,6 +217,7 @@ export default function SettingsPage() {
       const payload = { ...formData, payments: enabledPayments };
       const result = await updateTenantSettings(tenant.id, payload);
       if (result.success) {
+        toast.success("Action completed successfully!");
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
       } else {
@@ -250,6 +322,31 @@ export default function SettingsPage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {activeTab === "general" ? (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {/* Subscription Details */}
+            <div className="bg-gradient-to-r from-blue-900 to-indigo-900 rounded-2xl border border-blue-800 shadow-sm overflow-hidden text-white relative">
+              <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                <CheckCircle size={100} />
+              </div>
+              <div className="p-6 relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    Current Plan: <span className="bg-blue-500/30 px-3 py-1 rounded-full text-blue-200 border border-blue-400/30 text-sm uppercase tracking-wider">{tenant?.planType || 'Trial'}</span>
+                  </h3>
+                  <p className="text-blue-200 text-sm mt-2">
+                    Staff Limit: <strong className="text-white">{tenant?.staffLimit || 1} members</strong> • 
+                    SMS Limit: <strong className="text-white">{tenant?.smsLimit === -1 ? 'Unlimited' : `${tenant?.smsLimit || 100} msgs/month`}</strong>
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button type="button" onClick={() => setShowSmsModal(true)} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors shadow-lg">
+                    Buy SMS Credits
+                  </button>
+                  <button type="button" onClick={() => setShowUpgradeModal(true)} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors border border-white/20 backdrop-blur-sm">
+                    Upgrade Plan
+                  </button>
+                </div>
+              </div>
+            </div>
             {/* Business Info Section */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="p-6 border-b border-gray-100 flex items-center gap-2 text-gray-900 font-bold">
@@ -389,6 +486,42 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
+
+            {/* Automated CRM Section */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-gray-100 flex items-center gap-2 text-gray-900 font-bold">
+                <MessageSquare size={20} className="text-primary" />
+                Automated CRM (Win-back Campaign)
+              </div>
+              <div className="p-6">
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-500 mb-4">
+                    Tự động gửi SMS tặng mã giảm giá cho khách hàng đã không quay lại tiệm sau 60 ngày.
+                  </p>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                      <DollarSign size={16} /> Win-back Discount (%)
+                    </label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      max="100"
+                      value={formData.smsTemplates?.winbackDiscount || "5"}
+                      onChange={(e) => setFormData({
+                        ...formData, 
+                        smsTemplates: {
+                          ...formData.smsTemplates,
+                          winbackDiscount: e.target.value
+                        }
+                      })}
+                      className="w-full max-w-xs p-2.5 rounded-xl border border-gray-200 focus:border-primary outline-none" 
+                    />
+                    <p className="text-xs text-gray-500 italic">Mức giảm giá này sẽ được gắn vào nội dung tin nhắn (ví dụ mã WINBACK5).</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         ) : activeTab === "social" ? (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -727,6 +860,138 @@ export default function SettingsPage() {
           </button>
         </div>
       </form>
+
+      {/* SMS Top Up Modal */}
+      {showSmsModal && (
+        <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                <MessageSquare className="text-primary" /> Top-Up SMS Credits
+              </h3>
+              <button onClick={() => setShowSmsModal(false)} className="text-gray-400 hover:text-gray-600">×</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-gray-500 mb-4">Your current SMS limit is {tenant?.smsLimit}. Buy more credits to continue sending automated notifications.</p>
+              
+              <div className="grid grid-cols-1 gap-3 relative">
+                <button 
+                  type="button"
+                  onClick={() => handleBuySms(500, 10)}
+                  disabled={isBuyingSms}
+                  className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-primary hover:bg-primary/5 transition-all text-left group disabled:opacity-50"
+                >
+                  <div>
+                    <div className="font-bold text-gray-900 group-hover:text-primary">Starter Pack</div>
+                    <div className="text-xs text-gray-500">+500 SMS</div>
+                  </div>
+                  <div className="font-bold text-lg text-gray-900">$10.00</div>
+                </button>
+                
+                <button 
+                  type="button"
+                  onClick={() => handleBuySms(2000, 35)}
+                  disabled={isBuyingSms}
+                  className="flex items-center justify-between p-4 border border-blue-200 bg-blue-50 rounded-xl hover:border-blue-500 hover:bg-blue-100 transition-all text-left group relative overflow-hidden disabled:opacity-50"
+                >
+                  <div className="absolute top-0 right-0 bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">BEST VALUE</div>
+                  <div>
+                    <div className="font-bold text-blue-900">Pro Pack</div>
+                    <div className="text-xs text-blue-700">+2000 SMS</div>
+                  </div>
+                  <div className="font-bold text-lg text-blue-900">$35.00</div>
+                </button>
+
+                <button 
+                  type="button"
+                  onClick={() => handleBuySms(5000, 80)}
+                  disabled={isBuyingSms}
+                  className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-primary hover:bg-primary/5 transition-all text-left group disabled:opacity-50"
+                >
+                  <div>
+                    <div className="font-bold text-gray-900 group-hover:text-primary">Volume Pack</div>
+                    <div className="text-xs text-gray-500">+5000 SMS</div>
+                  </div>
+                  <div className="font-bold text-lg text-gray-900">$80.00</div>
+                </button>
+
+                {isBuyingSms && (
+                  <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-xl">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary mb-2" />
+                    <span className="text-sm font-medium text-gray-700">Processing payment...</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upgrade Plan Modal */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                <CheckCircle className="text-primary" /> Upgrade Subscription Plan
+              </h3>
+              <button onClick={() => setShowUpgradeModal(false)} className="text-gray-400 hover:text-gray-600">×</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-gray-500 mb-4">Your current plan is {tenant?.planType || 'Trial'}. Upgrade to unlock more features, staff members, and limits.</p>
+              
+              <div className="grid grid-cols-1 gap-3 relative">
+                <button 
+                  type="button"
+                  onClick={() => handleUpgradePlan("Basic", 29)}
+                  disabled={isUpgrading}
+                  className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-primary hover:bg-primary/5 transition-all text-left group disabled:opacity-50"
+                >
+                  <div>
+                    <div className="font-bold text-gray-900 group-hover:text-primary">Basic Plan</div>
+                    <div className="text-xs text-gray-500">Up to 3 Staff</div>
+                  </div>
+                  <div className="font-bold text-lg text-gray-900">$29/mo</div>
+                </button>
+                
+                <button 
+                  type="button"
+                  onClick={() => handleUpgradePlan("Pro", 79)}
+                  disabled={isUpgrading}
+                  className="flex items-center justify-between p-4 border border-blue-200 bg-blue-50 rounded-xl hover:border-blue-500 hover:bg-blue-100 transition-all text-left group relative overflow-hidden disabled:opacity-50"
+                >
+                  <div className="absolute top-0 right-0 bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">POPULAR</div>
+                  <div>
+                    <div className="font-bold text-blue-900">Pro Plan</div>
+                    <div className="text-xs text-blue-700">Up to 10 Staff + More Features</div>
+                  </div>
+                  <div className="font-bold text-lg text-blue-900">$79/mo</div>
+                </button>
+
+                <button 
+                  type="button"
+                  onClick={() => handleUpgradePlan("Enterprise", 199)}
+                  disabled={isUpgrading}
+                  className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-primary hover:bg-primary/5 transition-all text-left group disabled:opacity-50"
+                >
+                  <div>
+                    <div className="font-bold text-gray-900 group-hover:text-primary">Enterprise Plan</div>
+                    <div className="text-xs text-gray-500">Unlimited Everything</div>
+                  </div>
+                  <div className="font-bold text-lg text-gray-900">$199/mo</div>
+                </button>
+
+                {isUpgrading && (
+                  <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-xl">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary mb-2" />
+                    <span className="text-sm font-medium text-gray-700">Sending request...</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -131,7 +131,7 @@ export default function CalendarPage() {
           } : null,
           date: item.date,
           time: item.time,
-          status: "Approved",
+          status: "Confirmed",
           notes: formNotes || null,
         });
       });
@@ -153,7 +153,8 @@ export default function CalendarPage() {
         }]);
         setFormNotes("");
       } else {
-        alert("Some bookings failed to save.");
+        const failedResult = results.find(r => !r.success);
+        alert(`Some bookings failed to save: ${failedResult?.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error(error);

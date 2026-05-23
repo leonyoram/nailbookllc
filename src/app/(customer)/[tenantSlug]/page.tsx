@@ -5,6 +5,7 @@ import { ChatbotWidget } from "@/components/common/ChatbotWidget";
 import Image from "next/image";
 import { ShieldAlert } from "lucide-react";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
+import { BookingContainer } from "@/components/booking/BookingContainer";
 
 export const revalidate = 3600; // Revalidate every hour
 
@@ -93,7 +94,7 @@ export default async function TenantBookingPage({ params }: PageProps) {
       {/* Booking Wizard */}
       <div className="flex-1 relative z-10 py-4 md:py-8 px-4 w-full flex flex-col items-center justify-center">
         <div className="w-full max-w-3xl bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50 overflow-hidden h-[calc(100vh-120px)] max-h-[800px] flex flex-col">
-          <BookingWizard tenant={tenant} />
+          <BookingContainer tenant={tenant} />
         </div>
       </div>
       

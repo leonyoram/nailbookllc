@@ -8,13 +8,13 @@ export function StepPayment({ tenant }: { tenant?: any }) {
 
   let enabledFeatures: string[] = [];
   try {
-    enabledFeatures = tenant?.enabledFeatures ? JSON.parse(tenant.enabledFeatures) : ["promotions", "staff", "attendance", "sms", "chatbot", "reports", "googleReviews", "social", "payments", "workingHours", "staffTimeOff"];
+    enabledFeatures = tenant?.enabledFeatures ? (typeof tenant.enabledFeatures === 'string' ? JSON.parse(tenant.enabledFeatures) : tenant.enabledFeatures) : ["promotions", "staff", "attendance", "sms", "chatbot", "reports", "googleReviews", "social", "payments", "workingHours", "staffTimeOff"];
   } catch(e) {}
 
   let enabledPayments: string[] = ["Pay in Store"];
   if (enabledFeatures.includes("payments") && tenant?.payments) {
     try {
-      enabledPayments = JSON.parse(tenant.payments);
+      enabledPayments = typeof tenant.payments === 'string' ? JSON.parse(tenant.payments) : tenant.payments;
     } catch (e) {
       if (typeof tenant.payments === 'string') {
         enabledPayments = tenant.payments.split(',');

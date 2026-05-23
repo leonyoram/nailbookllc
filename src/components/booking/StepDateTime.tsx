@@ -1,6 +1,7 @@
 "use client";
 
 import { useBookingStore } from "@/store/useBookingStore";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useState } from "react";
 
 const generateDays = () => {
@@ -16,6 +17,7 @@ const generateDays = () => {
 
 export function StepDateTime({ tenant }: { tenant: any }) {
   const { selectedDate, selectedTime, setDateTime, nextStep, selectedStaff } = useBookingStore();
+  const { t, language } = useTranslation();
   
   const [localDate, setLocalDate] = useState<Date | null>(selectedDate || new Date());
   const [localTime, setLocalTime] = useState<string | null>(selectedTime);
@@ -80,10 +82,10 @@ export function StepDateTime({ tenant }: { tenant: any }) {
       slotDate.setHours(h, min, 0, 0);
 
       if (slotDate > threshold) {
-        const timeStr = slotDate.toLocaleTimeString('en-US', { 
+        const timeStr = slotDate.toLocaleTimeString(language === 'vi' ? 'vi-VN' : 'en-US', { 
           hour: '2-digit', 
           minute: '2-digit', 
-          hour12: true 
+          hour12: language !== 'vi' 
         });
         slots.push(timeStr);
       }
@@ -104,14 +106,14 @@ export function StepDateTime({ tenant }: { tenant: any }) {
         
         {/* Date Picker */}
         <div className="mb-8">
-          <h3 className="font-medium text-gray-900 mb-3">Select Date</h3>
+          <h3 className="font-medium text-gray-900 mb-3">{t("wizard.selectDate")}</h3>
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
             {days.map((date, i) => {
               const isSelected = localDate?.toDateString() === date.toDateString();
-              const dayNameShort = date.toLocaleDateString('en-US', { weekday: 'short' });
+              const dayNameShort = date.toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US', { weekday: 'short' });
               const dayNameLong = date.toLocaleDateString('en-US', { weekday: 'long' });
               const dayNum = date.getDate();
-              const month = date.toLocaleDateString('en-US', { month: 'short' });
+              const month = date.toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US', { month: 'short' });
               
               // Check if disabled
               const offsetDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
@@ -150,10 +152,10 @@ export function StepDateTime({ tenant }: { tenant: any }) {
 
         {/* Time Picker */}
         <div>
-          <h3 className="font-medium text-gray-900 mb-3">Select Time</h3>
+          <h3 className="font-medium text-gray-900 mb-3">{t("wizard.selectTime")}</h3>
           {timeSlots.length === 0 ? (
             <div className="p-8 text-center text-gray-500 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-              No slots available for this date.
+              {t("wizard.noSlots") || "No slots available for this date."}
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-3">
@@ -183,7 +185,7 @@ export function StepDateTime({ tenant }: { tenant: any }) {
           disabled={!localDate || !localTime}
           className="w-full py-4 rounded-xl bg-accent-1 hover:bg-accent-2 text-white font-semibold text-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_14px_0_rgba(190,34,48,0.39)]"
         >
-          Continue
+          {t("wizard.continue")}
         </button>
       </div>
     </div>

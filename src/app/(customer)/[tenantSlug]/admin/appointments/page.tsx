@@ -1,4 +1,5 @@
 "use client";
+import toast from "react-hot-toast";
 
 import { useState, useEffect, Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
@@ -65,6 +66,7 @@ function AppointmentsContent() {
     try {
       const result = await updateBookingStatus(id, newStatus, tenant.id);
       if (result.success) {
+        toast.success("Action completed successfully!");
         // Update local state
         setBookings(bookings.map(b => b.id === id ? { ...b, status: newStatus } : b));
       } else {
@@ -82,7 +84,7 @@ function AppointmentsContent() {
     switch (status) {
       case "Pending":
         return <span className="flex items-center gap-1 text-yellow-600 bg-yellow-50 px-2 py-1 rounded-md text-xs font-semibold"><AlertCircle size={12} /> Pending</span>;
-      case "Approved":
+      case "Confirmed":
         return <span className="flex items-center gap-1 text-green-600 bg-green-50 px-2 py-1 rounded-md text-xs font-semibold"><CheckCircle size={12} /> Approved</span>;
       case "Reject":
       case "Cancel":
@@ -185,7 +187,7 @@ function AppointmentsContent() {
                       className="bg-white border border-gray-200 text-gray-700 text-sm rounded-lg p-1.5 outline-none cursor-pointer hover:border-gray-300 disabled:opacity-50"
                     >
                       <option value="Pending">Pending</option>
-                      <option value="Approved">Approved</option>
+                      <option value="Confirmed">Confirmed</option>
                       <option value="Reject">Reject</option>
                       <option value="Cancel">Cancel</option>
                     </select>
@@ -246,7 +248,7 @@ function AppointmentsContent() {
                   className="bg-gray-50 border border-gray-200 text-gray-700 text-xs rounded-lg px-2 py-1.5 outline-none font-medium"
                 >
                   <option value="Pending">Pending</option>
-                  <option value="Approved">Approved</option>
+                  <option value="Confirmed">Confirmed</option>
                   <option value="Reject">Reject</option>
                   <option value="Cancel">Cancel</option>
                 </select>

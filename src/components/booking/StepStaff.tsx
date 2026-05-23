@@ -6,7 +6,7 @@ import { User, Check, Loader2 } from "lucide-react";
 import { getStaff } from "@/actions/staff";
 
 export function StepStaff({ tenant }: { tenant: any }) {
-  const { selectedStaff, setStaff, nextStep } = useBookingStore();
+  const { selectedStaff, setStaff, nextStep, selectedServices } = useBookingStore();
   const [staffList, setStaffList] = useState<Staff[]>([{ id: "any", name: "Any Available" }]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -17,9 +17,20 @@ export function StepStaff({ tenant }: { tenant: any }) {
         const formattedStaff: Staff[] = data.map((s: any) => ({
           id: s.id,
           name: s.name,
-          timeOffDates: s.timeOffDates ? JSON.parse(s.timeOffDates) : []
+          timeOffDates: s.timeOffDates ? (typeof s.timeOffDates === 'string' ? JSON.parse(s.timeOffDates) : s.timeOffDates) : [],
+          skills: s.skills ? (typeof s.skills === 'string' ? JSON.parse(s.skills) : s.skills) : null,
         }));
-        setStaffList([{ id: "any", name: "Any Available" }, ...formattedStaff]);
+
+        const requiredCategoryIds = selectedServices
+          .map(s => s.categoryId)
+          .filter(Boolean) as string[];
+
+        const eligibleStaff = formattedStaff.filter(staff => {
+          if (!staff.skills || staff.skills.length === 0) return true;
+          return requiredCategoryIds.every(id => staff.skills!.includes(id));
+        });
+
+        setStaffList([{ id: "any", name: "Any Available" }, ...eligibleStaff]);
       } catch (error) {
         console.error("Failed to load staff", error);
       } finally {
@@ -29,7 +40,7 @@ export function StepStaff({ tenant }: { tenant: any }) {
     if (tenant?.id) {
       fetchStaff();
     }
-  }, [tenant?.id]);
+  }, [tenant?.id, selectedServices]);
 
   if (isLoading) {
     return (

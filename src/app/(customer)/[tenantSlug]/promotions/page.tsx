@@ -171,7 +171,7 @@ export default function PromotionsPage() {
               onSpin={handleSpin} 
               onFinish={handleFinish} 
               color={tenant.themeColor || "#724677"} 
-              prizes={tenant.luckyWheelConfig ? JSON.parse(tenant.luckyWheelConfig).map((p: any) => p.label) : []}
+              prizes={tenant.luckyWheelConfig ? (typeof tenant.luckyWheelConfig === 'string' ? JSON.parse(tenant.luckyWheelConfig) : tenant.luckyWheelConfig).map((p: any) => p.label) : []}
             />
             
             {error && (

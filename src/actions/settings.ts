@@ -16,7 +16,7 @@ export async function getSystemSettings() {
       });
     }
 
-    return settings;
+    return JSON.parse(JSON.stringify(settings));
   } catch (error) {
     console.error('Error fetching SystemSettings:', error);
     return null;
@@ -39,7 +39,7 @@ export async function updateTwilioSettings(data: { twilioSid: string; twilioAuth
         twilioPhone: data.twilioPhone,
       },
     });
-    return { success: true, settings };
+    return { success: true, settings: JSON.parse(JSON.stringify(settings)) };
   } catch (error: any) {
     console.error('Error updating SystemSettings:', error);
     return { success: false, error: error.message };
@@ -62,7 +62,7 @@ export async function updateSMSTemplates(data: { pendingSmsTemplate: string; app
         rejectedSmsTemplate: data.rejectedSmsTemplate,
       },
     });
-    return { success: true, settings };
+    return { success: true, settings: JSON.parse(JSON.stringify(settings)) };
   } catch (error: any) {
 
     console.error('Error updating SMS templates:', error);
@@ -99,7 +99,7 @@ export async function updateSMTPSettings(data: {
         smtpFrom: data.smtpFrom,
       },
     });
-    return { success: true, settings };
+    return { success: true, settings: JSON.parse(JSON.stringify(settings)) };
   } catch (error: any) {
     console.error('Error updating SMTP Settings:', error);
     return { success: false, error: error.message };

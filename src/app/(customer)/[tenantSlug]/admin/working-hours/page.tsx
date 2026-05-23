@@ -1,4 +1,5 @@
 "use client";
+import toast from "react-hot-toast";
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
@@ -49,7 +50,7 @@ export default function WorkingHoursPage() {
         
         if (t.workingHours) {
           try {
-            const parsed = JSON.parse(t.workingHours);
+            const parsed = typeof t.workingHours === 'string' ? JSON.parse(t.workingHours) : t.workingHours;
             setWeeklyHours({ ...defaultWeekly, ...parsed });
           } catch(e) {
             setWeeklyHours(defaultWeekly);
@@ -61,7 +62,7 @@ export default function WorkingHoursPage() {
         // Parse Holidays
         if (t.holidays) {
           try {
-            setHolidays(JSON.parse(t.holidays));
+            setHolidays(typeof t.holidays === 'string' ? JSON.parse(t.holidays) : t.holidays);
           } catch(e) {
             setHolidays([]);
           }
@@ -73,7 +74,7 @@ export default function WorkingHoursPage() {
         if (stf.length > 0) {
           setSelectedStaffId(stf[0].id);
           try {
-             setStaffTimeOff(stf[0].timeOffDates ? JSON.parse(stf[0].timeOffDates) : []);
+             setStaffTimeOff(stf[0].timeOffDates ? (typeof stf[0].timeOffDates === 'string' ? JSON.parse(stf[0].timeOffDates) : stf[0].timeOffDates) : []);
           } catch(e) {
              setStaffTimeOff([]);
           }
@@ -90,7 +91,7 @@ export default function WorkingHoursPage() {
       const staff = staffList.find(s => s.id === selectedStaffId);
       if (staff) {
         try {
-          setStaffTimeOff(staff.timeOffDates ? JSON.parse(staff.timeOffDates) : []);
+          setStaffTimeOff(staff.timeOffDates ? (typeof staff.timeOffDates === 'string' ? JSON.parse(staff.timeOffDates) : staff.timeOffDates) : []);
         } catch(e) {
           setStaffTimeOff([]);
         }
@@ -138,6 +139,7 @@ export default function WorkingHoursPage() {
     });
 
     if (result.success) {
+        toast.success("Action completed successfully!");
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } else {
@@ -153,6 +155,7 @@ export default function WorkingHoursPage() {
 
     const result = await updateStaffTimeOff(selectedStaffId, staffTimeOff);
     if (result.success) {
+        toast.success("Action completed successfully!");
       // Update local staff list state
       setStaffList(staffList.map(s => s.id === selectedStaffId ? { ...s, timeOffDates: JSON.stringify(staffTimeOff) } : s));
       setSaveSuccess(true);
@@ -192,7 +195,7 @@ export default function WorkingHoursPage() {
           >
             <CalendarOff size={16} /> Salon Holidays
           </button>
-          {(!tenant?.enabledFeatures || JSON.parse(tenant.enabledFeatures).includes("staffTimeOff")) && (
+          {(!tenant?.enabledFeatures || (typeof tenant.enabledFeatures === 'string' ? JSON.parse(tenant.enabledFeatures) : tenant.enabledFeatures).includes("staffTimeOff")) && (
             <button 
               onClick={() => setActiveTab("staff")}
               className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'staff' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}

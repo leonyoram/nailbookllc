@@ -111,10 +111,14 @@ export async function createTenant(data: any) {
         location,
         phone,
         bookingPhone,
-        payments: JSON.stringify(payments),
+        payments: payments || null,
         status: "Active",
         dueDate: dueDate,
-        enabledFeatures: data.enabledFeatures ? JSON.stringify(data.enabledFeatures) : JSON.stringify(["promotions", "staff", "attendance", "sms", "chatbot", "reports", "googleReviews", "social", "payments", "workingHours", "staffTimeOff"]),
+        region: data.region || "VN",
+        timezone: data.timezone || (data.region === "US" ? "America/New_York" : "Asia/Ho_Chi_Minh"),
+        currency: data.currency || (data.region === "US" ? "USD" : "VND"),
+        locale: data.locale || (data.region === "US" ? "en" : "vi"),
+        enabledFeatures: data.enabledFeatures ? data.enabledFeatures : ["promotions", "staff", "attendance", "sms", "chatbot", "reports", "googleReviews", "social", "payments", "workingHours", "staffTimeOff"],
       },
     });
 
@@ -143,14 +147,25 @@ export async function updateTenantSettings(tenantId: string, data: any) {
         itPassword: data.itPassword !== undefined ? data.itPassword : undefined,
         logo: data.logo !== undefined ? data.logo : undefined,
         googleReviewUrl: data.googleReviewUrl !== undefined ? data.googleReviewUrl : undefined,
-        socialLinks: data.socialLinks !== undefined ? (data.socialLinks ? JSON.stringify(data.socialLinks) : null) : undefined,
-        paymentConfig: data.paymentConfig !== undefined ? (data.paymentConfig ? JSON.stringify(data.paymentConfig) : null) : undefined,
-        payments: data.payments !== undefined ? (data.payments ? JSON.stringify(data.payments) : null) : undefined,
+        socialLinks: data.socialLinks !== undefined ? (typeof data.socialLinks === 'object' ? JSON.stringify(data.socialLinks) : data.socialLinks) : undefined,
+        paymentConfig: data.paymentConfig !== undefined ? data.paymentConfig : undefined,
+        payments: data.payments !== undefined ? data.payments : undefined,
         chatbotEnabled: data.chatbotEnabled !== undefined ? data.chatbotEnabled : undefined,
-        chatbotConfig: data.chatbotConfig !== undefined ? (data.chatbotConfig ? JSON.stringify(data.chatbotConfig) : null) : undefined,
+        chatbotConfig: data.chatbotConfig !== undefined ? data.chatbotConfig : undefined,
         dueDate: data.dueDate !== undefined ? (data.dueDate ? new Date(data.dueDate) : null) : undefined,
         status: data.status !== undefined ? data.status : undefined,
-        enabledFeatures: data.enabledFeatures !== undefined ? (data.enabledFeatures ? JSON.stringify(data.enabledFeatures) : "[]") : undefined,
+        region: data.region !== undefined ? data.region : undefined,
+        timezone: data.timezone !== undefined ? data.timezone : undefined,
+        currency: data.currency !== undefined ? data.currency : undefined,
+        locale: data.locale !== undefined ? data.locale : undefined,
+        defaultSalaryCycle: data.defaultSalaryCycle !== undefined ? data.defaultSalaryCycle : undefined,
+        enabledFeatures: data.enabledFeatures !== undefined ? data.enabledFeatures : undefined,
+        smsEnabled: data.smsEnabled !== undefined ? data.smsEnabled : undefined,
+        autoApproveBooking: data.autoApproveBooking !== undefined ? data.autoApproveBooking : undefined,
+        smsTemplates: data.smsTemplates !== undefined ? data.smsTemplates : undefined,
+        smsLimit: data.smsLimit !== undefined ? parseInt(data.smsLimit) : undefined,
+        planType: data.planType !== undefined ? data.planType : undefined,
+        staffLimit: data.staffLimit !== undefined ? parseInt(data.staffLimit) : undefined,
       },
     });
 
@@ -209,7 +224,7 @@ export async function updateLuckyWheel(tenantId: string, data: { enabled?: boole
     }
 
     if (data.config) {
-      updateData.luckyWheelConfig = JSON.stringify(data.config);
+      updateData.luckyWheelConfig = data.config;
     }
 
     const tenant = await prisma.tenant.update({
@@ -229,10 +244,10 @@ export async function updateWorkingHours(tenantId: string, data: { workingHours?
   try {
     const updateData: any = {};
     if (data.workingHours !== undefined) {
-      updateData.workingHours = JSON.stringify(data.workingHours);
+      updateData.workingHours = data.workingHours;
     }
     if (data.holidays !== undefined) {
-      updateData.holidays = JSON.stringify(data.holidays);
+      updateData.holidays = data.holidays;
     }
 
     const tenant = await prisma.tenant.update({
@@ -283,5 +298,34 @@ export async function getTenantStats(tenantId: string) {
   } catch (error) {
     console.error("Failed to get stats:", error);
     return { success: false, error: "Failed to get stats" };
+  }
+}
+
+export async function topUpSmsLimit(tenantId: string, amount: number) {
+  try {
+    const current = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { smsLimit: true, slug: true }
+    });
+
+    if (!current) return { success: false, error: "Tenant not found" };
+
+    let currentLimit = current.smsLimit || 0;
+    if (currentLimit === -1) {
+      return { success: false, error: "Your plan already has Unlimited SMS." };
+    }
+
+    const updated = await prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        smsLimit: currentLimit + amount
+      }
+    });
+
+    revalidatePath(`/${current.slug}/admin/settings`);
+    return { success: true, data: { newLimit: updated.smsLimit } };
+  } catch (error: any) {
+    console.error("Failed to top-up SMS limit:", error);
+    return { success: false, error: "System error while adding SMS credits" };
   }
 }

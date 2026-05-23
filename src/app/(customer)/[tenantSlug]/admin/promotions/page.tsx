@@ -1,4 +1,5 @@
 "use client";
+import toast from "react-hot-toast";
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
@@ -45,7 +46,7 @@ export default function PromotionsPage() {
           
           if (t.luckyWheelConfig) {
             try {
-              setLuckyWheelConfig(JSON.parse(t.luckyWheelConfig));
+              setLuckyWheelConfig(typeof t.luckyWheelConfig === 'string' ? JSON.parse(t.luckyWheelConfig) : t.luckyWheelConfig);
             } catch (e) {}
           }
         }
@@ -76,6 +77,7 @@ export default function PromotionsPage() {
       });
 
       if (result.success) {
+        toast.success("Action completed successfully!");
         setCoupons([result.coupon, ...coupons]);
         setShowAddModal(false);
         setFormName("");
@@ -97,6 +99,7 @@ export default function PromotionsPage() {
     try {
       const result = await deleteCoupon(id);
       if (result.success) {
+        toast.success("Action completed successfully!");
         setCoupons(coupons.filter(c => c.id !== id));
       }
     } catch (error) {
@@ -110,6 +113,7 @@ export default function PromotionsPage() {
     try {
       const result = await updateLuckyWheel(tenant.id, { enabled: !tenant.luckyWheelEnabled });
       if (result.success) {
+        toast.success("Action completed successfully!");
         setTenant(result.data);
       } else {
         alert(result.error);
@@ -135,6 +139,7 @@ export default function PromotionsPage() {
 
       const result = await updateLuckyWheel(tenant.id, { config: luckyWheelConfig });
       if (result.success) {
+        toast.success("Action completed successfully!");
         setTenant(result.data);
         alert("Lucky wheel configuration saved!");
       } else {

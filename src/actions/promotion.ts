@@ -1,82 +1,96 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
 
-const PRIZES = [
-  { name: "2% Off", weight: 50 },
-  { name: "5% Off", weight: 30 },
-  { name: "10% Off", weight: 5 },
-  { name: "Free Lipstick", weight: 10 },
-  { name: "Free Makeup", weight: 5 },
-];
+export async function createPromotion(data: {
+  tenantId: string;
+  title: string;
+  description?: string;
+  discount: number;
+  type?: string;
+  startTime?: string;
+  endTime?: string;
+  dayOfWeek?: any;
+}) {
+  try {
+    const promo = await prisma.promotion.create({
+      data: {
+        tenantId: data.tenantId,
+        title: data.title,
+        description: data.description,
+        discount: data.discount,
+        type: (data.type as any) || "percentage",
+        startTime: data.startTime ? new Date(`1970-01-01T${data.startTime}:00Z`) : null,
+        endTime: data.endTime ? new Date(`1970-01-01T${data.endTime}:00Z`) : null,
+        dayOfWeek: data.dayOfWeek || null,
+        isActive: true,
+      },
+    });
 
-function getRandomPrize(prizes: { label: string, probability: number }[]) {
-  const totalWeight = prizes.reduce((sum, prize) => sum + (parseFloat(prize.probability as any) || 0), 0);
-  let random = Math.random() * totalWeight;
-
-  for (const prize of prizes) {
-    const prob = parseFloat(prize.probability as any) || 0;
-    if (random < prob) return prize.label;
-    random -= prob;
+    revalidatePath(`/[tenantSlug]/admin/promotions`, "page");
+    return { success: true, promotion: JSON.parse(JSON.stringify(promo)) };
+  } catch (error) {
+    console.error("Failed to create promotion:", error);
+    return { success: false, error: "System error while creating promotion" };
   }
-  return prizes[0].label; // Fallback
+}
+
+export async function getPromotions(tenantId: string) {
+  try {
+    const promotions = await prisma.promotion.findMany({
+      where: { tenantId, isActive: true },
+    });
+    return JSON.parse(JSON.stringify(promotions));
+  } catch (error) {
+    console.error("Failed to fetch promotions:", error);
+    return [];
+  }
+}
+
+export async function getUnusedPromotion(tenantId: string, phone: string) {
+  try {
+    const claim = await prisma.promotionClaim.findFirst({
+      where: { tenantId, phone, status: "Unused" }
+    });
+    return claim;
+  } catch (error) {
+    console.error("Failed to get unused promotion:", error);
+    return null;
+  }
 }
 
 export async function checkEligibility(tenantId: string, phone: string) {
   try {
-    // 1. Check if phone is already a customer
-    const existingCustomer = await prisma.customer.findFirst({
-      where: { tenantId, phone },
-    });
+    const customer = await prisma.customer.findFirst({ where: { tenantId, phone } });
+    if (customer) return { eligible: false, reason: "already_customer" };
 
-    if (existingCustomer) {
-      return { eligible: false, reason: "already_customer" };
-    }
-
-    // 2. Check if phone has already spun the wheel
-    const existingClaim = await prisma.promotionClaim.findUnique({
-      where: {
-        tenantId_phone: {
-          tenantId,
-          phone,
-        },
-      },
-    });
-
-    if (existingClaim) {
-      return { eligible: false, reason: "already_spun" };
-    }
+    const claim = await prisma.promotionClaim.findFirst({ where: { tenantId, phone } });
+    if (claim) return { eligible: false, reason: "already_spun" };
 
     return { eligible: true };
   } catch (error) {
-    console.error("Error checking eligibility:", error);
+    console.error("Failed to check eligibility:", error);
     return { eligible: false, reason: "error" };
   }
 }
 
 export async function claimPromotion(tenantId: string, phone: string) {
   try {
-    // Re-verify eligibility to prevent race conditions
-    const eligibility = await checkEligibility(tenantId, phone);
-    if (!eligibility.eligible) {
-      return { success: false, error: eligibility.reason };
-    }
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+    let prize = "10% Off";
 
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { luckyWheelConfig: true }
-    });
-
-    let prize = "";
     if (tenant?.luckyWheelConfig) {
       try {
-        const config = JSON.parse(tenant.luckyWheelConfig);
-        prize = getRandomPrize(config);
+        const config = tenant.luckyWheelConfig as any;
+        if (Array.isArray(config) && config.length > 0) {
+          // simple random pick for now
+          const randomIdx = Math.floor(Math.random() * config.length);
+          prize = config[randomIdx].label || config[randomIdx].prize || "10% Off";
+        }
       } catch (e) {
-        prize = "5% Off"; // Fallback if parse fails
+        console.error("Failed to parse lucky wheel config");
       }
-    } else {
-      prize = "5% Off"; // Default fallback
     }
 
     const claim = await prisma.promotionClaim.create({
@@ -85,32 +99,12 @@ export async function claimPromotion(tenantId: string, phone: string) {
         phone,
         prize,
         status: "Unused",
-      },
+      }
     });
 
     return { success: true, prize: claim.prize };
   } catch (error) {
-    console.error("Error claiming promotion:", error);
+    console.error("Failed to claim promotion:", error);
     return { success: false, error: "System error while claiming promotion" };
-  }
-}
-
-export async function getUnusedPromotion(tenantId: string, phone: string) {
-  if (!phone) return null;
-  
-  try {
-    const claim = await prisma.promotionClaim.findFirst({
-      where: {
-        tenantId,
-        phone,
-        status: "Unused",
-      },
-      orderBy: { createdAt: "desc" }
-    });
-    
-    return claim;
-  } catch (error) {
-    console.error("Error fetching unused promotion:", error);
-    return null;
   }
 }

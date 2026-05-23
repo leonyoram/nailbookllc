@@ -23,6 +23,7 @@ export default function TenantsPage() {
   const [supportTickets, setSupportTickets] = useState<any[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [broadcastData, setBroadcastData] = useState({ title: "", message: "", type: "update" as any });
+  const [toastMessage, setToastMessage] = useState("");
 
   const generatePass = () => {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Removed ambiguous chars like I, O, 1, 0
@@ -43,7 +44,11 @@ export default function TenantsPage() {
     themeColor: "#724677",
     location: "",
     phone: "",
-    bookingPhone: ""
+    bookingPhone: "",
+    region: "VN",
+    timezone: "Asia/Ho_Chi_Minh",
+    currency: "VND",
+    locale: "vi"
   });
 
   // Load tenants on mount
@@ -102,7 +107,11 @@ export default function TenantsPage() {
         themeColor: "#724677", 
         location: "", 
         phone: "",
-        bookingPhone: ""
+        bookingPhone: "",
+        region: "VN",
+        timezone: "Asia/Ho_Chi_Minh",
+        currency: "VND",
+        locale: "vi"
       });
       loadTenants(); // Refresh list
     } else {
@@ -138,8 +147,23 @@ export default function TenantsPage() {
       bookingPhone: (form.elements.namedItem("bookingPhone") as HTMLInputElement).value,
       dueDate: (form.elements.namedItem("dueDate") as HTMLInputElement).value,
       status: (form.elements.namedItem("status") as HTMLSelectElement).value,
+      planType: (form.elements.namedItem("planType") as HTMLSelectElement).value,
+      staffLimit: parseInt((form.elements.namedItem("staffLimit") as HTMLInputElement).value || "1", 10),
+      region: (form.elements.namedItem("region") as HTMLSelectElement).value,
+      timezone: (form.elements.namedItem("timezone") as HTMLInputElement).value,
+      currency: (form.elements.namedItem("currency") as HTMLInputElement).value,
+      locale: (form.elements.namedItem("locale") as HTMLInputElement).value,
       enabledFeatures: enabledFeatures,
       themeColor: selectedTenant.themeColor,
+      smsEnabled: (form.elements.namedItem("smsEnabled") as HTMLInputElement)?.checked || false,
+      autoApproveBooking: (form.elements.namedItem("autoApproveBooking") as HTMLInputElement)?.checked || false,
+      smsLimit: parseInt((form.elements.namedItem("smsLimit") as HTMLSelectElement)?.value || "100"),
+      smsTemplates: {
+        pending: (form.elements.namedItem("smsTemplatePending") as HTMLTextAreaElement)?.value || "",
+        approved: (form.elements.namedItem("smsTemplateApproved") as HTMLTextAreaElement)?.value || "",
+        rejected: (form.elements.namedItem("smsTemplateRejected") as HTMLTextAreaElement)?.value || "",
+        multiBooking: (form.elements.namedItem("smsTemplateMulti") as HTMLTextAreaElement)?.value || "",
+      }
     };
 
     const { updateTenantSettings } = await import("@/actions/tenant");
@@ -149,6 +173,8 @@ export default function TenantsPage() {
       setShowEditConfig(false);
       setSelectedTenant(res.data);
       loadTenants();
+      setToastMessage("Configuration saved successfully!");
+      setTimeout(() => setToastMessage(""), 3000);
     } else {
       alert(res.error || "Failed to update configuration");
     }
@@ -300,27 +326,45 @@ export default function TenantsPage() {
               <input type="text" name="bookingPhone" value={formData.bookingPhone} onChange={handleInputChange} placeholder="e.g., (555) 987-6543" className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:border-blue-500 outline-none transition-colors" />
             </div>
             
-            <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-xl space-y-3">
-              <div className="flex items-center gap-2 text-blue-400 font-bold text-xs uppercase tracking-wider">
-                <ShieldAlert size={14} /> IT System Account
+            <div className="p-4 bg-purple-500/5 border border-purple-500/10 rounded-xl space-y-3">
+              <div className="flex items-center gap-2 text-purple-400 font-bold text-xs uppercase tracking-wider">
+                <ShieldAlert size={14} /> Market & Regional Settings
               </div>
               <div className="grid grid-cols-1 gap-3">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Username (Default)</label>
-                  <input type="text" value="itvicimix" disabled className="w-full bg-gray-900/50 border border-gray-700 rounded-lg p-2 text-gray-500 text-sm cursor-not-allowed" />
+                  <label className="block text-xs text-gray-400 mb-1">Target Market</label>
+                  <select 
+                    name="region" 
+                    value={formData.region} 
+                    onChange={(e) => {
+                      const reg = e.target.value;
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        region: reg,
+                        timezone: reg === 'US' ? 'America/New_York' : 'Asia/Ho_Chi_Minh',
+                        currency: reg === 'US' ? 'USD' : 'VND',
+                        locale: reg === 'US' ? 'en' : 'vi'
+                      }));
+                    }}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm focus:border-blue-500 outline-none"
+                  >
+                    <option value="VN">Vietnam Market</option>
+                    <option value="US">USA Market</option>
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] text-gray-500 mb-1">Currency</label>
+                    <input type="text" name="currency" value={formData.currency} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 rounded-lg p-1.5 text-white text-xs" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 mb-1">Locale</label>
+                    <input type="text" name="locale" value={formData.locale} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 rounded-lg p-1.5 text-white text-xs" />
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1 flex justify-between">
-                    Generated IT Password
-                    <button 
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, itPassword: generatePass() }))}
-                      className="text-blue-400 hover:text-blue-300 transition-colors"
-                    >
-                      Regenerate
-                    </button>
-                  </label>
-                  <input type="text" name="itPassword" value={formData.itPassword} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm focus:border-blue-500 outline-none font-mono" />
+                  <label className="block text-[10px] text-gray-500 mb-1">Timezone</label>
+                  <input type="text" name="timezone" value={formData.timezone} onChange={handleInputChange} className="w-full bg-gray-900 border border-gray-700 rounded-lg p-1.5 text-white text-xs" />
                 </div>
               </div>
             </div>
@@ -369,7 +413,14 @@ export default function TenantsPage() {
             ) : (
               tenants.map((t) => (
                 <tr key={t.id} className="border-t border-gray-700 hover:bg-gray-750 transition-colors">
-                  <td className="px-6 py-4 font-medium text-white">{t.name}</td>
+                  <td className="px-6 py-4 font-medium text-white">
+                    <div className="flex items-center gap-2">
+                      {t.name}
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${t.region === 'US' ? 'bg-blue-500/20 text-blue-400' : 'bg-red-500/20 text-red-400'}`}>
+                        {t.region || 'VN'}
+                      </span>
+                    </div>
+                  </td>
                   <td className="px-6 py-4">
                     {t.status === "Active" ? (
                       <div className="flex flex-col gap-2">
@@ -637,7 +688,7 @@ export default function TenantsPage() {
       {/* Edit Tenant & Statistics Modal */}
       {selectedTenant && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-800 rounded-2xl w-full max-w-3xl border border-gray-700 shadow-2xl overflow-hidden animate-in zoom-in-95">
+          <div className="bg-gray-800 rounded-2xl w-full max-w-5xl border border-gray-700 shadow-2xl overflow-hidden animate-in zoom-in-95">
             {/* Header */}
             <div className="flex justify-between items-center p-6 border-b border-gray-700 bg-gray-900/50">
               <div>
@@ -804,6 +855,48 @@ export default function TenantsPage() {
                             <input type="text" name="bookingPhone" defaultValue={selectedTenant.bookingPhone} className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-sm focus:border-blue-500 outline-none" />
                           </div>
                         </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-700 pt-4 mt-2">
+                          <div>
+                            <label className="block text-xs font-medium text-blue-400 mb-1">Subscription Plan</label>
+                            <select 
+                              name="planType" 
+                              defaultValue={selectedTenant.planType || "Trial"} 
+                              className="w-full bg-blue-900/20 border border-blue-500/50 rounded-lg p-2.5 text-white text-sm focus:border-blue-500 outline-none"
+                              onChange={(e) => {
+                                const plan = e.target.value;
+                                const staffInput = document.querySelector('input[name="staffLimit"]') as HTMLInputElement;
+                                const smsLimitSelect = document.querySelector('select[name="smsLimit"]') as HTMLSelectElement;
+                                const smsEnabledCheckbox = document.querySelector('input[name="smsEnabled"]') as HTMLInputElement;
+                                
+                                if (plan === 'Trial') {
+                                  if (staffInput) staffInput.value = '1';
+                                  if (smsEnabledCheckbox && smsEnabledCheckbox.checked) smsEnabledCheckbox.click();
+                                } else if (plan === 'Basic') {
+                                  if (staffInput) staffInput.value = '3';
+                                  if (smsLimitSelect) smsLimitSelect.value = '100';
+                                  if (smsEnabledCheckbox && !smsEnabledCheckbox.checked) smsEnabledCheckbox.click();
+                                } else if (plan === 'Advanced') {
+                                  if (staffInput) staffInput.value = '10';
+                                  if (smsLimitSelect) smsLimitSelect.value = '500';
+                                  if (smsEnabledCheckbox && !smsEnabledCheckbox.checked) smsEnabledCheckbox.click();
+                                } else if (plan === 'Unlimited') {
+                                  if (staffInput) staffInput.value = '9999';
+                                  if (smsLimitSelect) smsLimitSelect.value = '5000';
+                                  if (smsEnabledCheckbox && !smsEnabledCheckbox.checked) smsEnabledCheckbox.click();
+                                }
+                              }}
+                            >
+                              <option value="Trial">Trial (14 days)</option>
+                              <option value="Basic">Basic</option>
+                              <option value="Advanced">Advanced</option>
+                              <option value="Unlimited">Unlimited / VIP</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-400 mb-1">Staff Limit</label>
+                            <input type="number" name="staffLimit" defaultValue={selectedTenant.staffLimit || 1} className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-sm focus:border-blue-500 outline-none" />
+                          </div>
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-xs font-medium text-gray-400 mb-1">Next Due Day</label>
@@ -820,6 +913,107 @@ export default function TenantsPage() {
                             </select>
                           </div>
                         </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-400 mb-1">Target Market</label>
+                            <select name="region" defaultValue={selectedTenant.region || "VN"} className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-sm focus:border-blue-500 outline-none bg-gray-900">
+                              <option value="VN">Vietnam Market</option>
+                              <option value="US">USA Market</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">Timezone</label>
+                            <input type="text" name="timezone" defaultValue={selectedTenant.timezone} className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-xs" />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">Currency</label>
+                            <input type="text" name="currency" defaultValue={selectedTenant.currency} className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-xs" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">Locale</label>
+                            <input type="text" name="locale" defaultValue={selectedTenant.locale} className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-xs" />
+                          </div>
+                        </div>
+                        <div className="space-y-3 pt-2">
+                          <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-700 pb-2">Booking & SMS Configuration</h4>
+                          <div className="flex flex-col gap-4 bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+                            <label className="flex items-center gap-3 cursor-pointer">
+                              <div className="relative">
+                                <input type="checkbox" name="autoApproveBooking" defaultChecked={selectedTenant.autoApproveBooking} className="peer sr-only" />
+                                <div className="block bg-gray-700 w-10 h-6 rounded-full peer-checked:bg-blue-600 transition-colors"></div>
+                                <div className="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-4"></div>
+                              </div>
+                              <span className="text-sm font-medium text-white">Auto Approve Booking</span>
+                            </label>
+
+                            <label className="flex items-center gap-3 cursor-pointer">
+                              <div className="relative">
+                                <input 
+                                  type="checkbox" 
+                                  name="smsEnabled" 
+                                  defaultChecked={selectedTenant.smsEnabled} 
+                                  className="peer sr-only"
+                                  onChange={(e) => {
+                                    const tpl = document.getElementById("sms-templates-container");
+                                    const limit = document.getElementById("sms-limit-container");
+                                    if (tpl && limit) {
+                                      if (e.target.checked) {
+                                        tpl.classList.remove("hidden");
+                                        limit.classList.remove("hidden");
+                                      } else {
+                                        tpl.classList.add("hidden");
+                                        limit.classList.add("hidden");
+                                      }
+                                    }
+                                  }}
+                                />
+                                <div className="block bg-gray-700 w-10 h-6 rounded-full peer-checked:bg-blue-600 transition-colors"></div>
+                                <div className="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-4"></div>
+                              </div>
+                              <span className="text-sm font-medium text-white">Enable SMS Notifications</span>
+                            </label>
+
+                            <div className={`mt-2 mb-4 flex items-center gap-4 ${!selectedTenant.smsEnabled ? 'hidden' : ''}`} id="sms-limit-container">
+                              <div className="flex-1">
+                                <label className="block text-xs font-medium text-gray-400 mb-1">SMS Limit</label>
+                                <div className="flex items-center gap-1">
+                                  <input type="number" name="smsLimit" defaultValue={selectedTenant.smsLimit ?? 100} className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-xs focus:border-blue-500 outline-none" />
+                                  <button type="button" onClick={(e) => { const input = e.currentTarget.previousElementSibling as HTMLInputElement; input.value = (parseInt(input.value || "0") + 500).toString(); }} className="px-2 py-1.5 bg-gray-800 hover:bg-gray-700 rounded text-[10px] text-green-400 font-bold border border-gray-700 transition-colors shrink-0" title="Add 500 SMS">+500</button>
+                                  <button type="button" onClick={(e) => { const input = e.currentTarget.previousElementSibling?.previousElementSibling as HTMLInputElement; input.value = (parseInt(input.value || "0") + 2000).toString(); }} className="px-2 py-1.5 bg-gray-800 hover:bg-gray-700 rounded text-[10px] text-blue-400 font-bold border border-gray-700 transition-colors shrink-0" title="Add 2000 SMS">+2K</button>
+                                </div>
+                                <div className="text-[9px] text-gray-500 mt-1">Set to -1 for Unlimited</div>
+                              </div>
+                              <div className="flex-1">
+                                <label className="block text-xs font-medium text-gray-400 mb-1">SMS Sent</label>
+                                <div className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 text-gray-400 text-xs font-mono">
+                                  {selectedTenant.smsSent || 0}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div id="sms-templates-container" className={`space-y-3 pl-4 border-l-2 border-gray-700 ${!selectedTenant.smsEnabled ? 'hidden' : ''}`}>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-400 mb-1">Template: Pending</label>
+                                <textarea name="smsTemplatePending" defaultValue={(selectedTenant.smsTemplates || {}).pending || "Hi %customer_full_name%, your appointment for %service_name% at %tenant_name% on %appointment_start_time% is PENDING. We will notify you once approved."} rows={2} className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-xs focus:border-blue-500 outline-none resize-none"></textarea>
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-400 mb-1">Template: Approved</label>
+                                <textarea name="smsTemplateApproved" defaultValue={(selectedTenant.smsTemplates || {}).approved || "Hi %customer_full_name%, your appointment for %service_name% at %tenant_name% on %appointment_start_time% has been APPROVED! See you then."} rows={2} className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-xs focus:border-blue-500 outline-none resize-none"></textarea>
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-400 mb-1">Template: Rejected</label>
+                                <textarea name="smsTemplateRejected" defaultValue={(selectedTenant.smsTemplates || {}).rejected || "Hi %customer_full_name%, unfortunately your appointment for %service_name% at %tenant_name% on %appointment_start_time% has been REJECTED. Please contact us for more info."} rows={2} className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-xs focus:border-blue-500 outline-none resize-none"></textarea>
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-400 mb-1">Template: Multiple Appointments</label>
+                                <textarea name="smsTemplateMulti" defaultValue={(selectedTenant.smsTemplates || {}).multiBooking || ""} rows={2} className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-xs focus:border-blue-500 outline-none resize-none"></textarea>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
                         <div className="space-y-3 pt-2">
                           <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-700 pb-2">Feature Access Control</h4>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
@@ -838,7 +1032,8 @@ export default function TenantsPage() {
                             ].map((feat) => {
                               const isEnabled = (() => {
                                 try {
-                                  const features = JSON.parse(selectedTenant.enabledFeatures || "[]");
+                                  const raw = selectedTenant.enabledFeatures;
+                                  const features = Array.isArray(raw) ? raw : JSON.parse(raw || "[]");
                                   return features.includes(feat.id);
                                 } catch (e) { return false; }
                               })();
@@ -877,6 +1072,14 @@ export default function TenantsPage() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-[100] bg-green-600 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-5 duration-300">
+          <ShieldCheck size={20} />
+          <span className="font-medium text-sm">{toastMessage}</span>
         </div>
       )}
     </div>

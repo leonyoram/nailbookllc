@@ -16,7 +16,6 @@ export function useTranslation() {
   const dict = dictionaries[language] || en;
 
   // Simple key-based getter
-  // E.g., t("wizard.step")
   const t = (key: string): string => {
     const keys = key.split(".");
     let value: any = dict;
@@ -32,5 +31,22 @@ export function useTranslation() {
     return typeof value === "string" ? value : key;
   };
 
-  return { t, language };
+  const formatCurrency = (amount: number, currency: string = "VND") => {
+    return new Intl.NumberFormat(language === "vi" ? "vi-VN" : "en-US", {
+      style: "currency",
+      currency: currency,
+      maximumFractionDigits: currency === "VND" ? 0 : 2,
+    }).format(amount);
+  };
+
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat(language === "vi" ? "vi-VN" : "en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }).format(date);
+  };
+
+  return { t, language, formatCurrency, formatDate };
 }

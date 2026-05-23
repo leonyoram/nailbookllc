@@ -8,7 +8,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 
 export function StepService({ tenant }: { tenant: any }) {
   const { selectedServices, toggleService, nextStep } = useBookingStore();
-  const { t } = useTranslation();
+  const { t, formatCurrency } = useTranslation();
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -22,7 +22,8 @@ export function StepService({ tenant }: { tenant: any }) {
           name: s.name,
           duration: parseInt(s.duration) || 60,
           price: s.price.toString(),
-          category: s.category || "General",
+          category: s.category?.name || s.category || "General",
+          categoryId: s.categoryId || s.category?.id || undefined,
         })));
       } catch (error) {
         console.error("Error fetching services:", error);
@@ -81,7 +82,7 @@ export function StepService({ tenant }: { tenant: any }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className="font-semibold text-gray-900">${service.price}</span>
+                    <span className="font-semibold text-gray-900">{formatCurrency(parseFloat(service.price) || 0, tenant.currency)}</span>
                     <div
                       className={`w-6 h-6 rounded-full flex items-center justify-center border ${
                         isSelected(service.id) ? "bg-primary border-primary text-white" : "border-gray-300"

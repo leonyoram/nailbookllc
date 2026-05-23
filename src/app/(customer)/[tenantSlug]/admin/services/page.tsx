@@ -1,9 +1,10 @@
 "use client";
+import toast from "react-hot-toast";
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { Plus, Edit2, Trash2, Search, Loader2, Upload, FileJson } from "lucide-react";
-import { getServices, createService, deleteService, updateService, importServices } from "@/actions/service";
+import { Plus, Edit2, Trash2, Search, Loader2, Upload, FileJson, LayoutGrid, Sparkles } from "lucide-react";
+import { getServices, createService, deleteService, updateService, importServices, getCategories, createCategory } from "@/actions/service";
 import { getTenantBySlug } from "@/actions/tenant";
 
 export default function ServicesPage() {
@@ -15,23 +16,25 @@ export default function ServicesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [categories, setCategories] = useState(["Nails", "Spa", "Hair"]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const filteredServices = services.filter(s => {
+    if (selectedCategory && s.categoryId !== selectedCategory) return false;
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return s.name.toLowerCase().includes(q) ||
-           (s.category && s.category.toLowerCase().includes(q));
+           (s.category?.name && s.category.name.toLowerCase().includes(q));
   });
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery]);
+  }, [searchQuery, selectedCategory]);
   
   // Delete Modal State
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -57,9 +60,9 @@ export default function ServicesPage() {
           const s = await getServices(t.id);
           setServices(s);
           
-          // Extract unique categories from services
-          const uniqueCats = Array.from(new Set([...categories, ...s.map((svc: any) => svc.category).filter(Boolean)]));
-          setCategories(uniqueCats);
+          const cats = await getCategories(t.id);
+          setCategories(cats);
+          if (cats.length > 0) setFormCategory(cats[0].id);
         }
       } catch (error) {
         console.error("Error fetching services:", error);
@@ -70,10 +73,18 @@ export default function ServicesPage() {
     fetchData();
   }, [tenantSlug]);
 
-  const handleAddCategory = () => {
-    if (newCategoryName.trim() && !categories.includes(newCategoryName.trim())) {
-      setCategories([...categories, newCategoryName.trim()]);
-      setFormCategory(newCategoryName.trim());
+  const handleAddCategory = async () => {
+    if (newCategoryName.trim() && tenant) {
+      const existing = categories.find(c => c.name.toLowerCase() === newCategoryName.trim().toLowerCase());
+      if (existing) {
+        setFormCategory(existing.id);
+      } else {
+        const res = await createCategory(tenant.id, newCategoryName.trim());
+        if (res.success && res.category) {
+          setCategories(prev => [...prev, res.category]);
+          setFormCategory(res.category.id);
+        }
+      }
     }
     setNewCategoryName("");
     setIsAddingCategory(false);
@@ -82,13 +93,17 @@ export default function ServicesPage() {
   const openEditModal = (service: any) => {
     setEditingService(service);
     setFormName(service.name);
-    setFormCategory(service.category || "General");
+    setFormCategory(service.categoryId || (categories.length > 0 ? categories[0].id : ""));
     setFormDuration(service.duration.toString());
     setFormPrice(service.price.toString());
   };
 
   const handleCreateOrUpdate = async () => {
-    if (!tenant || !formName || isSubmitting) return;
+    if (!tenant || isSubmitting) return;
+    if (!formName.trim()) {
+      alert("Please enter a service name.");
+      return;
+    }
     
     setIsSubmitting(true);
     try {
@@ -96,20 +111,21 @@ export default function ServicesPage() {
       if (editingService) {
         result = await updateService(editingService.id, {
           name: formName,
-          category: formCategory,
+          categoryId: formCategory,
           duration: formDuration,
           price: formPrice
         });
       } else {
         result = await createService(tenant.id, {
           name: formName,
-          category: formCategory,
+          categoryId: formCategory,
           duration: formDuration,
           price: formPrice
         });
       }
       
       if (result.success) {
+        toast.success("Action completed successfully!");
         const updated = await getServices(tenant.id);
         setServices(updated);
         setShowAddForm(false);
@@ -141,6 +157,7 @@ export default function ServicesPage() {
     try {
       const result = await deleteService(id);
       if (result.success) {
+        toast.success("Action completed successfully!");
         setServices(services.filter(s => s.id !== id));
       } else {
         alert(result.error);
@@ -174,6 +191,7 @@ export default function ServicesPage() {
 
           const result = await importServices(tenant.id, servicesToImport);
           if (result.success) {
+            toast.success("Action completed successfully!");
             alert(`Successfully imported ${result.count} services!`);
             const updated = await getServices(tenant.id);
             setServices(updated);
@@ -287,7 +305,7 @@ export default function ServicesPage() {
                   onChange={(e) => setFormCategory(e.target.value)}
                   className="w-full p-2.5 rounded-lg border border-gray-200 focus:border-primary outline-none bg-white"
                 >
-                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               )}
             </div>
@@ -330,127 +348,161 @@ export default function ServicesPage() {
         </div>
       )}
 
-      {/* Desktop Table Content */}
-      <div className="flex-1 overflow-auto hidden md:block">
-        <table className="w-full text-left border-collapse">
-          <thead className="sticky top-0 bg-gray-50 z-10 shadow-sm">
-            <tr className="text-gray-500 text-sm border-b border-gray-200">
-              <th className="px-6 py-4 font-semibold">Service Name</th>
-              <th className="px-6 py-4 font-semibold">Category</th>
-              <th className="px-6 py-4 font-semibold">Duration (min)</th>
-              <th className="px-6 py-4 font-semibold">Price ($)</th>
-              <th className="px-6 py-4 font-semibold text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="text-sm">
-            {filteredServices.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                  No services found. Add your first service above.
-                </td>
-              </tr>
-            ) : (
-              paginatedServices.map((service) => (
-                <tr key={service.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
-                  <td className="px-6 py-4 font-medium text-gray-900">{service.name}</td>
-                  <td className="px-6 py-4">
-                    <span className="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
-                      {service.category || "General"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-gray-600">{service.duration}</td>
-                  <td className="px-6 py-4 font-medium text-gray-900">${service.price}</td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        onClick={() => { openEditModal(service); setShowAddForm(true); }}
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      >
-                        <Edit2 size={18} />
-                      </button>
-                      <button 
-                        onClick={() => promptDelete(service.id)}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Mobile Card Content */}
-      <div className="flex-1 overflow-auto md:hidden p-4 space-y-4 bg-gray-50/50">
-        {filteredServices.length === 0 ? (
-          <div className="py-12 text-center text-gray-500 bg-white rounded-xl border border-dashed border-gray-200">
-            No services found. Add your first service above.
-          </div>
-        ) : (
-          paginatedServices.map((service) => (
-            <div key={service.id} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="font-bold text-gray-900">{service.name}</div>
-                  <span className="inline-block mt-1 px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                    {service.category || "General"}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-bold text-primary">${service.price}</div>
-                  <div className="text-[10px] text-gray-400 font-medium">{service.duration} min</div>
-                </div>
-              </div>
-              
-              <div className="flex gap-2 pt-1">
-                <button 
-                  onClick={() => { openEditModal(service); setShowAddForm(true); }}
-                  className="flex-1 py-2 bg-gray-50 hover:bg-gray-100 text-gray-600 font-medium text-xs rounded-lg transition-colors border border-gray-100"
-                >
-                  Edit
-                </button>
-                <button 
-                  onClick={() => promptDelete(service.id)}
-                  className="flex-1 py-2 bg-red-50 hover:bg-red-100 text-red-600 font-medium text-xs rounded-lg transition-colors border border-red-100"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-gray-100 bg-white mt-auto shrink-0 z-10 gap-3">
-          <span className="text-sm text-gray-500">
-            Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredServices.length)} of {filteredServices.length} entries
-          </span>
-          <div className="flex items-center gap-2">
+      {/* Main Content Area */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Category Sidebar Column */}
+        <div className="w-72 border-r border-gray-100 bg-white p-6 overflow-y-auto hidden md:block shrink-0">
+          <div className="space-y-3">
             <button 
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-bold hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              onClick={() => setSelectedCategory(null)}
+              className={`flex items-center gap-4 w-full p-3 rounded-full font-semibold transition-colors ${!selectedCategory ? 'bg-primary/20 text-primary shadow-sm' : 'bg-primary/5 text-gray-700 hover:bg-primary/10 hover:text-primary'}`}
             >
-              Previous
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors ${!selectedCategory ? 'bg-primary/30' : 'bg-primary/10'}`}>
+                <LayoutGrid size={20} className={!selectedCategory ? "text-primary" : "text-gray-600"} />
+              </div>
+              <span className="text-left flex-1 truncate text-base">All Categories</span>
             </button>
-            <div className="px-4 py-2 text-sm font-bold text-gray-700 bg-gray-50 rounded-lg border border-gray-100">
-              Page {currentPage} of {totalPages}
-            </div>
-            <button 
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-bold hover:bg-gray-50 disabled:opacity-50 transition-colors"
-            >
-              Next
-            </button>
+
+            {categories.map((cat) => (
+              <button 
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
+                className={`flex items-center gap-4 w-full p-3 rounded-full font-semibold transition-colors ${selectedCategory === cat.id ? 'bg-primary/20 text-primary shadow-sm' : 'bg-primary/5 text-gray-700 hover:bg-primary/10 hover:text-primary'}`}
+              >
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors ${selectedCategory === cat.id ? 'bg-primary/30' : 'bg-primary/10'}`}>
+                  <Sparkles size={20} className={selectedCategory === cat.id ? "text-primary" : "text-gray-600"} />
+                </div>
+                <span className="text-left flex-1 truncate text-base">{cat.name}</span>
+              </button>
+            ))}
           </div>
         </div>
-      )}
+
+        {/* Services Content Wrapper */}
+        <div className="flex-1 flex flex-col min-w-0 bg-gray-50/50">
+          {/* Desktop Table Content */}
+          <div className="flex-1 overflow-auto hidden md:block bg-white">
+            <table className="w-full text-left border-collapse">
+              <thead className="sticky top-0 bg-gray-50 z-10 shadow-sm">
+                <tr className="text-gray-500 text-sm border-b border-gray-200">
+                  <th className="px-6 py-4 font-semibold">Service Name</th>
+                  <th className="px-6 py-4 font-semibold">Category</th>
+                  <th className="px-6 py-4 font-semibold">Duration (min)</th>
+                  <th className="px-6 py-4 font-semibold">Price ($)</th>
+                  <th className="px-6 py-4 font-semibold text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="text-sm">
+                {filteredServices.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                      No services found. Add your first service above.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedServices.map((service) => (
+                    <tr key={service.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
+                      <td className="px-6 py-4 font-medium text-gray-900">{service.name}</td>
+                      <td className="px-6 py-4">
+                        <span className="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
+                          {service.category?.name || "General"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-gray-600">{service.duration}</td>
+                      <td className="px-6 py-4 font-medium text-gray-900">${service.price}</td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={() => { openEditModal(service); setShowAddForm(true); }}
+                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          >
+                            <Edit2 size={18} />
+                          </button>
+                          <button 
+                            onClick={() => promptDelete(service.id)}
+                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card Content */}
+          <div className="flex-1 overflow-auto md:hidden p-4 space-y-4 bg-gray-50/50">
+            {filteredServices.length === 0 ? (
+              <div className="py-12 text-center text-gray-500 bg-white rounded-xl border border-dashed border-gray-200">
+                No services found. Add your first service above.
+              </div>
+            ) : (
+              paginatedServices.map((service) => (
+                <div key={service.id} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="font-bold text-gray-900">{service.name}</div>
+                      <span className="inline-block mt-1 px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                        {service.category?.name || "General"}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-bold text-primary">${service.price}</div>
+                      <div className="text-[10px] text-gray-400 font-medium">{service.duration} min</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2 pt-1">
+                    <button 
+                      onClick={() => { openEditModal(service); setShowAddForm(true); }}
+                      className="flex-1 py-2 bg-gray-50 hover:bg-gray-100 text-gray-600 font-medium text-xs rounded-lg transition-colors border border-gray-100"
+                    >
+                      Edit
+                    </button>
+                    <button 
+                      onClick={() => promptDelete(service.id)}
+                      className="flex-1 py-2 bg-red-50 hover:bg-red-100 text-red-600 font-medium text-xs rounded-lg transition-colors border border-red-100"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-gray-100 bg-white mt-auto shrink-0 z-10 gap-3">
+              <span className="text-sm text-gray-500">
+                Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredServices.length)} of {filteredServices.length} entries
+              </span>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-bold hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                >
+                  Previous
+                </button>
+                <div className="px-4 py-2 text-sm font-bold text-gray-700 bg-gray-50 rounded-lg border border-gray-100">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <button 
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-bold hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Custom Delete Confirmation Modal */}
       {deleteModalOpen && (

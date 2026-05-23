@@ -1,9 +1,10 @@
 "use client";
 
 import { useBookingStore } from "@/store/useBookingStore";
+import { useTranslation } from "@/hooks/useTranslation";
 import { CheckCircle, Calendar, User, Clock, Scissors, CreditCard, Star, ExternalLink, Share2, MapPin } from "lucide-react";
 import { useState } from "react";
-import { createBooking } from "@/actions/booking";
+import { createMultipleBookings } from "@/actions/booking";
 import { Gift, Tag, Loader2 } from "lucide-react";
 import { validateCoupon } from "@/actions/coupon";
 
@@ -13,10 +14,11 @@ export function StepConfirm({ tenant }: { tenant: any }) {
   const [isSuccess, setIsSuccess] = useState(false);
   const [promoCode, setPromoCode] = useState("");
   const [isValidating, setIsValidating] = useState(false);
+  const { t, formatCurrency, formatDate } = useTranslation();
 
   const totalPrice = state.selectedServices.reduce((sum, s) => {
     // Basic parsing for price string like "50+" or "50"
-    const val = parseInt(s.price.replace(/[^0-9]/g, '')) || 0;
+    const val = parseFloat(s.price.replace(/[^0-9.]/g, '')) || 0;
     return sum + val;
   }, 0);
 
@@ -53,16 +55,13 @@ export function StepConfirm({ tenant }: { tenant: any }) {
     setIsSubmitting(true);
     
     try {
-      // Pick the first service to associate with the booking
-      const mainService = state.selectedServices[0];
-      
       const fullPhone = `${state.customerInfo.countryCode}${state.customerInfo.phone.replace(/^0+/, '')}`;
       
-      const response = await createBooking({
+      const response = await createMultipleBookings({
         tenantId: tenant.id,
         customerName: state.customerInfo.fullName,
         customerPhone: fullPhone,
-        service: mainService,
+        services: state.selectedServices,
         staff: state.selectedStaff,
         date: state.selectedDate ? state.selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         time: state.selectedTime || "12:00",
@@ -90,7 +89,7 @@ export function StepConfirm({ tenant }: { tenant: any }) {
         <div className="w-24 h-24 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-6">
           <CheckCircle size={48} />
         </div>
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Booking Confirmed!</h2>
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">{t("wizard.bookingConfirmed")}</h2>
         <p className="text-gray-500 mb-6 max-w-sm">
           Thank you, {state.customerInfo.fullName}. Your appointment at {tenant.name} is successfully booked. We've sent a confirmation SMS to {state.customerInfo.countryCode} {state.customerInfo.phone}.
         </p>
@@ -186,7 +185,7 @@ export function StepConfirm({ tenant }: { tenant: any }) {
           }}
           className="px-8 py-3 rounded-xl bg-primary text-white font-medium hover:bg-primary-dark transition-colors"
         >
-          Book Another
+          {t("wizard.bookAnother")}
         </button>
 
         {tenant?.luckyWheelEnabled && (
@@ -211,7 +210,7 @@ export function StepConfirm({ tenant }: { tenant: any }) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto pb-24 w-full">
-        <h3 className="font-bold text-2xl text-gray-900 mb-6">Review & Confirm</h3>
+        <h3 className="font-bold text-2xl text-gray-900 mb-6">{t("wizard.reviewConfirm")}</h3>
         
         <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 space-y-6">
           
@@ -221,9 +220,9 @@ export function StepConfirm({ tenant }: { tenant: any }) {
               <Calendar className="text-primary mt-0.5" size={20} />
               <div>
                 <p className="font-medium text-gray-900">
-                  {state.selectedDate?.toDateString()} at {state.selectedTime}
+                  {state.selectedDate ? formatDate(state.selectedDate) : ""} {t("wizard.at")} {state.selectedTime}
                 </p>
-                <p className="text-sm text-gray-500">Scheduled Time</p>
+                <p className="text-sm text-gray-500">{t("wizard.scheduledTime")}</p>
               </div>
             </div>
             
@@ -231,9 +230,9 @@ export function StepConfirm({ tenant }: { tenant: any }) {
               <User className="text-primary mt-0.5" size={20} />
               <div>
                 <p className="font-medium text-gray-900">
-                  {state.selectedStaff ? state.selectedStaff.name : "Any Available Staff"}
+                  {state.selectedStaff ? state.selectedStaff.name : t("wizard.anyStaff")}
                 </p>
-                <p className="text-sm text-gray-500">Staff Member</p>
+                <p className="text-sm text-gray-500">{t("wizard.staffMember")}</p>
               </div>
             </div>
           </div>
@@ -243,13 +242,13 @@ export function StepConfirm({ tenant }: { tenant: any }) {
           {/* Services */}
           <div>
             <div className="flex items-center gap-2 mb-3 text-gray-500 font-medium text-sm uppercase tracking-wider">
-              <Scissors size={16} /> Services
+              <Scissors size={16} /> {t("wizard.services")}
             </div>
             <div className="space-y-3">
               {state.selectedServices.map(s => (
                 <div key={s.id} className="flex justify-between items-center">
                   <span className="text-gray-900 font-medium">{s.name}</span>
-                  <span className="text-gray-900 font-semibold">${s.price}</span>
+                  <span className="text-gray-900 font-semibold">{formatCurrency(parseFloat(s.price) || 0, tenant.currency)}</span>
                 </div>
               ))}
             </div>
@@ -257,7 +256,7 @@ export function StepConfirm({ tenant }: { tenant: any }) {
             {state.loyaltyStatus && state.loyaltyStatus.discountPercentage > 0 && (
               <div className="mt-3 flex justify-between items-center text-green-600 bg-green-50 p-2 rounded-lg text-sm font-medium">
                 <span>Loyalty Discount ({state.loyaltyStatus.tier} - {state.loyaltyStatus.discountPercentage}%)</span>
-                <span>- ${(totalPrice * (state.loyaltyStatus.discountPercentage / 100)).toFixed(2)}</span>
+                <span>- {formatCurrency(totalPrice * (state.loyaltyStatus.discountPercentage / 100), tenant.currency)}</span>
               </div>
             )}
 
@@ -295,36 +294,36 @@ export function StepConfirm({ tenant }: { tenant: any }) {
             <div className="mt-6 flex flex-col bg-primary/5 p-4 rounded-xl text-primary gap-2">
               <div className="flex justify-between items-center text-sm opacity-70">
                 <span>Subtotal</span>
-                <span>${totalPrice.toFixed(2)}</span>
+                <span>{formatCurrency(totalPrice, tenant.currency)}</span>
               </div>
               
               {state.loyaltyStatus && state.loyaltyStatus.discountPercentage > 0 && (
                 <div className="flex justify-between items-center text-sm font-medium text-green-600">
                   <span>Loyalty Discount ({state.loyaltyStatus.discountPercentage}%)</span>
-                  <span>-${(totalPrice * (state.loyaltyStatus.discountPercentage / 100)).toFixed(2)}</span>
+                  <span>-{formatCurrency(totalPrice * (state.loyaltyStatus.discountPercentage / 100), tenant.currency)}</span>
                 </div>
               )}
 
               {state.couponDiscount > 0 && (
                 <div className="flex justify-between items-center text-sm font-medium text-green-600">
                   <span>Promo Discount ({state.couponDiscount}%)</span>
-                  <span>-${(totalPrice * (state.couponDiscount / 100)).toFixed(2)}</span>
+                  <span>-{formatCurrency(totalPrice * (state.couponDiscount / 100), tenant.currency)}</span>
                 </div>
               )}
               
               {promoDiscount > 0 && (
                 <div className="flex justify-between items-center text-sm font-medium text-green-600">
                   <span>Lucky Wheel ({promoDiscount}%)</span>
-                  <span>-${(totalPrice * (promoDiscount / 100)).toFixed(2)}</span>
+                  <span>-{formatCurrency(totalPrice * (promoDiscount / 100), tenant.currency)}</span>
                 </div>
               )}
 
               <div className="h-px bg-primary/10 my-1" />
 
               <div className="flex justify-between items-center">
-                <span className="font-bold text-lg">Final Total</span>
+                <span className="font-bold text-lg">{t("wizard.finalTotal")}</span>
                 <span className="font-bold text-2xl">
-                  ${(totalPrice * (1 - totalDiscountPercentage / 100)).toFixed(2)}
+                  {formatCurrency(totalPrice * (1 - totalDiscountPercentage / 100), tenant.currency)}
                 </span>
               </div>
               
