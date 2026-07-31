@@ -13,7 +13,8 @@ function replaceSmsVariables(template: string, data: any) {
   return template
     .replace(/%customer_full_name%/g, data.customerName || "")
     .replace(/%service_name%/g, data.serviceName || "")
-    .replace(/%appointment_start_time%/g, `${data.date} at ${data.time}` || "")
+    .replace(/%appointment_start_time%/g, data.time || "")
+    .replace(/%appointment_date%/g, data.date || "")
     .replace(/%tenant_name%/g, data.tenantName || "");
 }
 
@@ -149,12 +150,12 @@ export async function createBooking({
       const settings = await getSystemSettings();
       if (tenant && tenant.smsEnabled && customerPhone && settings) {
         let template = "";
-        let smsTemplates: any = tenant.smsTemplates || {};
+        const smsTemplates: any = tenant.smsTemplates || {};
         
         if (status === "Confirmed") {
-           template = smsTemplates.approved || settings.approvedSmsTemplate || "Hi %customer_full_name%, your appointment for %service_name% at %tenant_name% on %appointment_start_time% has been APPROVED! See you then.";
+           template = smsTemplates.approved || settings.approvedSmsTemplate || "%tenant_name%: %service_name% apt at %appointment_start_time% %appointment_date% is confirmed.";
         } else {
-           template = smsTemplates.pending || settings.pendingSmsTemplate || "Hi %customer_full_name%, your appointment for %service_name% at %tenant_name% on %appointment_start_time% is PENDING. We will notify you once approved.";
+           template = smsTemplates.pending || settings.pendingSmsTemplate || "%tenant_name%: %service_name% apt at %appointment_start_time% %appointment_date% is pending.";
         }
 
         const message = replaceSmsVariables(template, {
@@ -165,6 +166,16 @@ export async function createBooking({
           tenantName: tenant.name
         });
         await sendSMS(tenantId, customerPhone, message);
+      }
+      
+      // Send SMS Notification to Salon
+      if (tenant && tenant.smsEnabled) {
+        const adminPhone = tenant.bookingPhone || tenant.phone;
+        if (adminPhone) {
+          const prefix = tenant.name ? tenant.name.substring(0,10) : "Vici";
+          const adminMessage = `${prefix}: New apt for ${customerName} (${customerPhone}) - ${service.name.substring(0,10)} at ${time} ${new Date(date).toLocaleDateString('en-US')}.`;
+          await sendSMS(tenantId, adminPhone, adminMessage);
+        }
       }
     } catch (smsError) {
       console.error("Failed to send SMS:", smsError);
@@ -360,14 +371,14 @@ export async function createMultipleBookings({
       const settings = await getSystemSettings();
       if (tenant && (tenant as any).smsEnabled && customerPhone && settings) {
         let template = "";
-        let smsTemplates: any = (tenant as any).smsTemplates || {};
+        const smsTemplates: any = (tenant as any).smsTemplates || {};
         
         if (services.length > 1 && smsTemplates.multiBooking) {
             template = smsTemplates.multiBooking;
         } else if (finalStatus === "Confirmed") {
-            template = smsTemplates.approved || settings.approvedSmsTemplate || "Hi %customer_full_name%, your appointment for %service_name% at %tenant_name% on %appointment_start_time% has been APPROVED! See you then.";
+            template = smsTemplates.approved || settings.approvedSmsTemplate || "%tenant_name%: %service_name% apt at %appointment_start_time% %appointment_date% is confirmed.";
         } else {
-            template = smsTemplates.pending || settings.pendingSmsTemplate || "Hi %customer_full_name%, your appointment for %service_name% at %tenant_name% on %appointment_start_time% is PENDING. We will notify you once approved.";
+            template = smsTemplates.pending || settings.pendingSmsTemplate || "%tenant_name%: %service_name% apt at %appointment_start_time% %appointment_date% is pending.";
         }
 
         if (template) {
@@ -379,6 +390,14 @@ export async function createMultipleBookings({
             tenantName: tenant.name
           });
           await sendSMS(tenantId, customerPhone, message);
+        }
+
+        // Send SMS Notification to Salon
+        const adminPhone = (tenant as any).bookingPhone || (tenant as any).phone;
+        if (adminPhone) {
+          const prefix = tenant.name ? tenant.name.substring(0,10) : "Vici";
+          const adminMessage = `${prefix}: New apt for ${customerName} (${customerPhone}) - ${combinedServiceNames.substring(0,10)} at ${time} ${new Date(date).toLocaleDateString('en-US')}.`;
+          await sendSMS(tenantId, adminPhone, adminMessage);
         }
       }
     } catch (smsError) {
@@ -517,12 +536,12 @@ export async function updateBookingStatus(id: string, status: string, tenantId: 
           const settings = await getSystemSettings();
           if (settings) {
             let template = "";
-            let smsTemplates: any = (tenant as any).smsTemplates || {};
+            const smsTemplates: any = (tenant as any).smsTemplates || {};
             
             if (status === "Confirmed") {
-              template = smsTemplates.approved || settings.approvedSmsTemplate || "Hi %customer_full_name%, your appointment for %service_name% at %tenant_name% on %appointment_start_time% has been APPROVED! See you then.";
+              template = smsTemplates.approved || settings.approvedSmsTemplate || "%tenant_name%: %service_name% apt at %appointment_start_time% %appointment_date% is confirmed.";
             } else if (status === "Rejected") {
-              template = smsTemplates.rejected || settings.rejectedSmsTemplate || "Hi %customer_full_name%, unfortunately your appointment for %service_name% at %tenant_name% on %appointment_start_time% has been REJECTED. Please contact us for more info.";
+              template = smsTemplates.rejected || settings.rejectedSmsTemplate || "%tenant_name%: %service_name% apt at %appointment_start_time% %appointment_date% was REJECTED. Pls contact us.";
             }
 
             if (template) {

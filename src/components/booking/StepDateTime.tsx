@@ -183,7 +183,7 @@ export function StepDateTime({ tenant }: { tenant: any }) {
         <button
           onClick={handleContinue}
           disabled={!localDate || !localTime}
-          className="w-full py-4 rounded-xl bg-accent-1 hover:bg-accent-2 text-white font-semibold text-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_14px_0_rgba(190,34,48,0.39)]"
+          className="w-full py-4 rounded-xl bg-primary hover:bg-primary/90 text-white font-semibold text-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/30"
         >
           {t("wizard.continue")}
         </button>

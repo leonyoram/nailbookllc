@@ -69,13 +69,22 @@ async function main() {
   
   console.log('Creating 20 services...');
   for (const service of servicesData) {
+    let category = await prisma.category.findUnique({
+      where: { tenantId_name: { tenantId, name: service.category } }
+    });
+    if (!category) {
+      category = await prisma.category.create({
+        data: { tenantId, name: service.category }
+      });
+    }
+
     await prisma.service.create({
       data: {
         tenantId,
         name: service.name,
         price: service.price,
         duration: service.duration,
-        category: service.category
+        categoryId: category.id
       }
     });
   }

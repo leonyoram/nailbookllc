@@ -30,7 +30,7 @@ export async function createStaff(tenantId: string, data: any) {
         salaryType: data.salaryType || "Commission",
         salaryCycle: data.salaryCycle || "Monthly",
         commissionRate: data.commissionRate ? parseFloat(data.commissionRate) : 0,
-        skills: data.skills ? JSON.stringify(data.skills) : null,
+        skills: data.skills ? JSON.stringify(data.skills) : undefined,
       },
     });
 
@@ -62,7 +62,7 @@ export async function updateStaff(id: string, data: any) {
         salaryType: data.salaryType !== undefined ? data.salaryType : undefined,
         salaryCycle: data.salaryCycle !== undefined ? data.salaryCycle : undefined,
         commissionRate: data.commissionRate !== undefined ? parseFloat(data.commissionRate) : undefined,
-        skills: data.skills !== undefined ? (data.skills ? JSON.stringify(data.skills) : null) : undefined,
+        skills: data.skills !== undefined ? (data.skills ? JSON.stringify(data.skills) : undefined) : undefined,
       },
     });
 

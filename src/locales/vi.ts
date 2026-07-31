@@ -28,5 +28,19 @@ export const vi = {
     noServices: "Hiện không có dịch vụ nào.",
     continue: "Tiếp Tục",
     min: "phút"
+  },
+  admin: {
+    addBooking: "Thêm Lịch Đặt",
+    dashboard: "Tổng Quan",
+    calendar: "Lịch Trình",
+    services: "Dịch Vụ",
+    staff: "Nhân Viên",
+    customers: "Khách Hàng",
+    settings: "Cài Đặt",
+    coupons: "Khuyến Mãi",
+    reviews: "Đánh Giá",
+    logout: "Đăng Xuất",
+    welcome: "Chào mừng trở lại",
+    search: "Tìm kiếm"
   }
 };

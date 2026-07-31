@@ -31,36 +31,37 @@ export async function getStaffDashboardData(tenantSlug: string) {
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - today.getDay()); // Sunday
 
-    // Get today's bookings
-    const todaysBookings = await prisma.booking.findMany({
-      where: {
-        tenantId: session.tenantId,
-        staffId: session.staffId,
-        date: today,
-        status: { not: "Cancelled" }
-      },
-      include: {
-        service: true,
-        customer: true
-      },
-      orderBy: { time: 'asc' }
-    });
+    const [todaysBookings, commissionsAgg, staff] = await Promise.all([
+      // Get today's bookings
+      prisma.booking.findMany({
+        where: {
+          tenantId: session.tenantId,
+          staffId: session.staffId,
+          date: today,
+          status: { not: "Cancelled" }
+        },
+        include: {
+          service: { select: { id: true, name: true, duration: true } },
+        },
+        orderBy: { time: 'asc' }
+      }),
+      // Get this week's commissions sum
+      prisma.commission.aggregate({
+        _sum: { amount: true },
+        where: {
+          tenantId: session.tenantId,
+          staffId: session.staffId,
+          createdAt: { gte: startOfWeek }
+        }
+      }),
+      // Get staff details
+      prisma.staff.findUnique({
+        where: { id: session.staffId },
+        select: { id: true, name: true, role: true }
+      })
+    ]);
 
-    // Get this week's commissions
-    const commissions = await prisma.commission.findMany({
-      where: {
-        tenantId: session.tenantId,
-        staffId: session.staffId,
-        createdAt: { gte: startOfWeek }
-      }
-    });
-
-    const weeklyCommission = commissions.reduce((sum, c) => sum + c.amount, 0);
-
-    // Get staff details
-    const staff = await prisma.staff.findUnique({
-      where: { id: session.staffId }
-    });
+    const weeklyCommission = commissionsAgg._sum.amount || 0;
 
     return { 
       success: true, 

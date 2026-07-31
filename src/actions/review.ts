@@ -56,3 +56,18 @@ export async function getReviews(tenantId: string) {
     return [];
   }
 }
+
+export async function updateReviewStatus(id: string, status: string, tenantId: string) {
+  try {
+    const review = await prisma.review.update({
+      where: { id, tenantId },
+      data: { status: status as any },
+    });
+    
+    revalidatePath(`/[tenantSlug]/admin/reviews`, "page");
+    return { success: true, review: JSON.parse(JSON.stringify(review)) };
+  } catch (error) {
+    console.error("Failed to update review status:", error);
+    return { success: false, error: "Failed to update review status." };
+  }
+}

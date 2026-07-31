@@ -32,19 +32,30 @@ export async function proxy(request: NextRequest) {
       if (payload.slug !== tenantSlug) {
         return NextResponse.redirect(new URL(`/${tenantSlug}/login`, request.url));
       }
-      
-      return NextResponse.next();
     } catch (error) {
       // Token invalid or expired
       return NextResponse.redirect(new URL(`/${tenantSlug}/login`, request.url));
     }
   }
 
-  return NextResponse.next();
+  // Handle Domain Routing
+  const hostname = request.headers.get("host") || "";
+  const isApp = hostname.startsWith("app.");
+
+  const searchParams = request.nextUrl.searchParams.toString();
+  const fullPath = `${pathname}${
+    searchParams.length > 0 ? `?${searchParams}` : ""
+  }`;
+
+  if (isApp) {
+    return NextResponse.rewrite(new URL(`/app-site${fullPath}`, request.url));
+  } else {
+    return NextResponse.rewrite(new URL(`/landing-site${fullPath}`, request.url));
+  }
 }
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+    "/((?!api|_next/static|_next/image|.*\\..+).*)",
   ],
 };

@@ -1,0 +1,1021 @@
+"use client";
+import toast from "react-hot-toast";
+import Image from "next/image";
+
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import { Settings, Save, Clock, Calendar, MapPin, Phone, Palette, Loader2, CheckCircle, DollarSign, Share2, MessageSquare } from "lucide-react";
+import { getTenantBySlug, updateTenantSettings, topUpSmsLimit } from "@/actions/tenant";
+import { sendSupportMessage } from "@/actions/support";
+
+export default function SettingsPage() {
+  const params = useParams();
+  const tenantSlug = params.tenantSlug as string;
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [tenant, setTenant] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState("general");
+  const [showSmsModal, setShowSmsModal] = useState(false);
+  const [isBuyingSms, setIsBuyingSms] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [isUpgrading, setIsUpgrading] = useState(false);
+
+  const handleBuySms = async (amount: number, price: number) => {
+    if (!tenant) return;
+    setIsBuyingSms(true);
+    
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenantId: tenant.id,
+          type: 'sms',
+          amount,
+          price
+        })
+      });
+      const data = await res.json();
+      
+      if (data.success && data.url) {
+        window.location.href = data.url;
+      } else {
+        toast.error(data.error || "Failed to initiate payment.");
+        setIsBuyingSms(false);
+      }
+    } catch (error) {
+      toast.error("System error.");
+      setIsBuyingSms(false);
+    }
+  };
+
+  const handleUpgradePlan = async (planName: string, price: number) => {
+    if (!tenant) return;
+    setIsUpgrading(true);
+    
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenantId: tenant.id,
+          type: 'upgrade',
+          planName,
+          price
+        })
+      });
+      const data = await res.json();
+      
+      if (data.success && data.url) {
+        window.location.href = data.url;
+      } else {
+        toast.error(data.error || "Failed to initiate upgrade.");
+        setIsUpgrading(false);
+      }
+    } catch (error) {
+      toast.error("System error.");
+      setIsUpgrading(false);
+    }
+  };
+
+  // Form State
+  const [formData, setFormData] = useState<any>({
+    name: "",
+    location: "",
+    phone: "",
+    slotInterval: "30",
+    minLeadTime: "60",
+    themeColor: "#000000",
+    logo: "",
+    googleReviewUrl: "",
+    paymentConfig: {
+      creditCard: { apiKey: "", merchantId: "" },
+      paypal: { clientId: "", secret: "" },
+      localPay: { phoneNumber: "", accountName: "" }
+    },
+    socialLinks: {
+      facebook: "",
+      instagram: "",
+      tiktok: "",
+      yelp: "",
+      googleMaps: ""
+    },
+    chatbotEnabled: false,
+    chatbotConfig: {
+      type: "whatsapp", // whatsapp, messenger, script
+      value: "",
+      welcomeMessage: "Hi there! How can we help you today?",
+      faq: [
+        { q: "I want to book an appointment", a: "Yes, you can click the 'Start Chat' button below to talk to our support staff, or book directly through our website!" },
+        { q: "Service pricing", a: "Service pricing depends on specific requirements. Please chat with us for more details." },
+        { q: "Opening hours", a: "We are open from 9:00 AM to 8:00 PM every day." },
+        { q: "Where are you located?", a: "Please scroll to the bottom of the website or click the Chat button to get our exact location." },
+        { q: "I need more consultation", a: "Yes, please click the 'Start Chat' button below and our staff will support you immediately!" }
+      ]
+    },
+    adminEmail: "",
+    adminPassword: "",
+    itPassword: "",
+    smsTemplates: { winbackDiscount: "5" },
+    autoSmsConfirm: false,
+    autoSmsReminder: false
+  });
+
+  const [enabledPayments, setEnabledPayments] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const t = await getTenantBySlug(tenantSlug);
+      if (t) {
+        setTenant(t);
+        
+        // Parse payments list
+        let payments: string[] = [];
+        try {
+          payments = t.payments ? (typeof t.payments === 'string' ? JSON.parse(t.payments) : t.payments) : [];
+        } catch (e) {
+          payments = t.payments ? t.payments.split(',') : [];
+        }
+        setEnabledPayments(payments);
+
+        // Parse config
+        let config = {
+          creditCard: { apiKey: "", merchantId: "" },
+          paypal: { clientId: "", secret: "" },
+          localPay: { phoneNumber: "", accountName: "" }
+        };
+        if (t.paymentConfig) {
+          try {
+            config = { ...config, ...(typeof t.paymentConfig === 'string' ? JSON.parse(t.paymentConfig) : t.paymentConfig) };
+          } catch (e) {}
+        }
+
+          const parsedConfig = t.chatbotConfig ? (typeof t.chatbotConfig === 'string' ? JSON.parse(t.chatbotConfig) : t.chatbotConfig) : {};
+          setFormData({
+            name: t.name || "",
+            location: t.location || "",
+            phone: t.phone || "",
+            slotInterval: t.slotInterval?.toString() || "30",
+            minLeadTime: t.minLeadTime?.toString() || "60",
+            themeColor: t.themeColor || "#000000",
+            logo: t.logo || "",
+            googleReviewUrl: t.googleReviewUrl || "",
+            paymentConfig: config,
+            socialLinks: t.socialLinks ? (typeof t.socialLinks === 'string' ? JSON.parse(t.socialLinks) : t.socialLinks) : {
+              facebook: "",
+              instagram: "",
+              tiktok: "",
+              yelp: "",
+              googleMaps: ""
+            },
+            chatbotEnabled: t.chatbotEnabled || false,
+            chatbotConfig: {
+              type: parsedConfig.type || "whatsapp",
+              value: parsedConfig.value || "",
+              welcomeMessage: parsedConfig.welcomeMessage || "Hi there! How can we help you today?",
+              faq: parsedConfig.faq || [
+                { q: "I want to book an appointment", a: "Yes, you can click the 'Start Chat' button below to talk to our support staff, or book directly through our website!" },
+                { q: "Service pricing", a: "Service pricing depends on specific requirements. Please chat with us for more details." },
+                { q: "Opening hours", a: "We are open from 9:00 AM to 8:00 PM every day." },
+                { q: "Where are you located?", a: "Please scroll to the bottom of the website or click the Chat button to get our exact location." },
+                { q: "I need more consultation", a: "Yes, please click the 'Start Chat' button below and our staff will support you immediately!" }
+              ]
+            },
+            adminEmail: t.adminEmail || "",
+            adminPassword: t.adminPassword || "",
+            itPassword: t.itPassword || "",
+            enabledFeatures: (() => {
+              try {
+                return typeof t.enabledFeatures === 'string' ? JSON.parse(t.enabledFeatures || "[]") : (t.enabledFeatures || []);
+              } catch (e) { return []; }
+            })(),
+            smsTemplates: (() => {
+              try {
+                const parsed = typeof t.smsTemplates === 'string' ? JSON.parse(t.smsTemplates || "{}") : (t.smsTemplates || {});
+                return { winbackDiscount: "5", ...parsed };
+              } catch (e) { return { winbackDiscount: "5" }; }
+            })(),
+            autoSmsConfirm: t.autoSmsConfirm || false,
+            autoSmsReminder: t.autoSmsReminder || false
+          });
+          
+          // If payments is disabled by Super Admin, override local enabledPayments to just "Pay in Store"
+          const features = t.enabledFeatures ? (typeof t.enabledFeatures === 'string' ? JSON.parse(t.enabledFeatures) : t.enabledFeatures) : [];
+          if (!features.includes("payments")) {
+            setEnabledPayments(["Pay in Store"]);
+          }
+      }
+      setIsLoading(false);
+    };
+    fetchData();
+  }, [tenantSlug]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tenant) return;
+
+    setIsSaving(true);
+    setSaveSuccess(false);
+    try {
+      const payload = { ...formData, payments: enabledPayments };
+      const result = await updateTenantSettings(tenant.id, payload);
+      if (result.success) {
+        toast.success("Action completed successfully!");
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      } else {
+        alert(result.error);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Failed to save settings");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleConfigChange = (method: string, field: string, value: string) => {
+    setFormData({
+      ...formData,
+      paymentConfig: {
+        ...formData.paymentConfig,
+        [method]: {
+          ...formData.paymentConfig[method],
+          [field]: value
+        }
+      }
+    });
+  };
+
+  const handleChatbotConfigChange = (field: string, value: any) => {
+    setFormData({
+      ...formData,
+      chatbotConfig: {
+        ...formData.chatbotConfig,
+        [field]: value
+      }
+    });
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, logo: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6 pb-20">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-gray-100 pb-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
+          <p className="text-gray-500 text-sm mt-1">Configure your business details, booking rules, and chatbot.</p>
+        </div>
+        
+        <div className="flex bg-gray-100 p-1 rounded-xl overflow-x-auto no-scrollbar">
+          <button 
+            type="button"
+            onClick={() => setActiveTab("general")}
+            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'general' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            General
+          </button>
+          {formData.enabledFeatures?.includes("payments") && (
+            <button 
+              type="button"
+              onClick={() => setActiveTab("payments")}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'payments' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Payments
+            </button>
+          )}
+          {formData.enabledFeatures?.includes("social") && (
+            <button 
+              type="button"
+              onClick={() => setActiveTab("social")}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'social' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Social
+            </button>
+          )}
+          {formData.enabledFeatures?.includes("chatbot") && (
+            <button 
+              type="button"
+              onClick={() => setActiveTab("chatbot")}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'chatbot' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Chatbot
+            </button>
+          )}
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {activeTab === "general" ? (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {/* Subscription Details */}
+            <div className="bg-gradient-to-r from-blue-900 to-indigo-900 rounded-2xl border border-blue-800 shadow-sm overflow-hidden text-white relative">
+              <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                <CheckCircle size={100} />
+              </div>
+              <div className="p-6 relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    Current Plan: <span className="bg-blue-500/30 px-3 py-1 rounded-full text-blue-200 border border-blue-400/30 text-sm uppercase tracking-wider">{tenant?.planType || 'Trial'}</span>
+                  </h3>
+                  <p className="text-blue-200 text-sm mt-2">
+                    Staff Limit: <strong className="text-white">{tenant?.staffLimit || 1} members</strong> • 
+                    SMS Limit: <strong className="text-white">{tenant?.smsLimit === -1 ? 'Unlimited' : `${tenant?.smsLimit || 100} msgs/month`}</strong>
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button type="button" onClick={() => setShowSmsModal(true)} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors shadow-lg">
+                    Buy SMS Credits
+                  </button>
+                  <button type="button" onClick={() => setShowUpgradeModal(true)} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors border border-white/20 backdrop-blur-sm">
+                    Upgrade Plan
+                  </button>
+                </div>
+              </div>
+            </div>
+            {/* Business Info Section */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-gray-100 flex items-center gap-2 text-gray-900 font-bold">
+                <Settings size={20} className="text-primary" />
+                General Information
+              </div>
+              <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <Settings size={16} /> Business Name
+                  </label>
+                  <input 
+                    type="text" 
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    className="w-full p-2.5 rounded-xl border border-gray-200 focus:border-primary outline-none" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <Palette size={16} /> Brand Color
+                  </label>
+                  <div className="flex gap-3">
+                    <input 
+                      type="color" 
+                      value={formData.themeColor}
+                      onChange={(e) => setFormData({...formData, themeColor: e.target.value})}
+                      className="w-12 h-10 p-0 rounded-lg border border-gray-200 cursor-pointer" 
+                    />
+                    <input 
+                      type="text" 
+                      value={formData.themeColor}
+                      onChange={(e) => setFormData({...formData, themeColor: e.target.value})}
+                      className="flex-1 p-2.5 rounded-xl border border-gray-200 focus:border-primary outline-none font-mono text-sm" 
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2 col-span-1 md:col-span-2">
+                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <Palette size={16} /> Business Logo
+                  </label>
+                  <div className="flex items-center gap-4">
+                    {formData.logo ? (
+                      <Image src={formData.logo} alt="Logo" width={64} height={64} className="h-16 w-16 object-contain rounded-full border border-gray-200" />
+                    ) : (
+                      <div className="h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 text-xs border border-gray-200">No Logo</div>
+                    )}
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="flex-1 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <MapPin size={16} /> Address / Location
+                  </label>
+                  <input 
+                    type="text" 
+                    value={formData.location}
+                    onChange={(e) => setFormData({...formData, location: e.target.value})}
+                    placeholder="e.g., 123 Beauty St, Los Angeles, CA"
+                    className="w-full p-2.5 rounded-xl border border-gray-200 focus:border-primary outline-none" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <Phone size={16} /> Business Phone
+                  </label>
+                  <input 
+                    type="tel" 
+                    value={formData.phone}
+                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    placeholder="(555) 000-0000"
+                    className="w-full p-2.5 rounded-xl border border-gray-200 focus:border-primary outline-none" 
+                  />
+                </div>
+                {formData.enabledFeatures?.includes("googleReviews") && (
+                  <div className="space-y-2 col-span-1 md:col-span-2">
+                    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                      <MapPin size={16} /> Google Map Review Link
+                    </label>
+                    <input 
+                      type="url" 
+                      value={formData.googleReviewUrl}
+                      onChange={(e) => setFormData({...formData, googleReviewUrl: e.target.value})}
+                      placeholder="e.g., https://share.google/..."
+                      className="w-full p-2.5 rounded-xl border border-gray-200 focus:border-primary outline-none" 
+                    />
+                    <p className="text-xs text-gray-500 italic">This link will be used in the step 7 booking confirmation page for customer reviews.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Booking Rules Section */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-gray-100 flex items-center gap-2 text-gray-900 font-bold">
+                <Calendar size={20} className="text-primary" />
+                Booking Rules
+              </div>
+              <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <Clock size={16} /> Time Slot Interval
+                  </label>
+                  <select 
+                    value={formData.slotInterval}
+                    onChange={(e) => setFormData({...formData, slotInterval: e.target.value})}
+                    className="w-full p-2.5 rounded-xl border border-gray-200 focus:border-primary outline-none bg-white"
+                  >
+                    <option value="15">Every 15 minutes</option>
+                    <option value="30">Every 30 minutes</option>
+                    <option value="45">Every 45 minutes</option>
+                    <option value="60">Every 1 hour</option>
+                  </select>
+                  <p className="text-xs text-gray-500 italic">Distance between available booking times.</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <Clock size={16} /> Minimum Lead Time
+                  </label>
+                  <select 
+                    value={formData.minLeadTime}
+                    onChange={(e) => setFormData({...formData, minLeadTime: e.target.value})}
+                    className="w-full p-2.5 rounded-xl border border-gray-200 focus:border-primary outline-none bg-white"
+                  >
+                    <option value="0">No minimum</option>
+                    <option value="30">30 minutes before</option>
+                    <option value="60">1 hour before</option>
+                    <option value="120">2 hours before</option>
+                    <option value="1440">1 day before</option>
+                  </select>
+                  <p className="text-xs text-gray-500 italic">How far in advance customers must book.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Automated CRM Section */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-gray-100 flex items-center gap-2 text-gray-900 font-bold">
+                <MessageSquare size={20} className="text-primary" />
+                Automated CRM (Win-back Campaign)
+              </div>
+              <div className="p-6">
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-500 mb-4">
+                    Tự động gửi SMS tặng mã giảm giá cho khách hàng đã không quay lại tiệm sau 60 ngày.
+                  </p>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                      <DollarSign size={16} /> Win-back Discount (%)
+                    </label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      max="100"
+                      value={formData.smsTemplates?.winbackDiscount || "5"}
+                      onChange={(e) => setFormData({
+                        ...formData, 
+                        smsTemplates: {
+                          ...formData.smsTemplates,
+                          winbackDiscount: e.target.value
+                        }
+                      })}
+                      className="w-full max-w-xs p-2.5 rounded-xl border border-gray-200 focus:border-primary outline-none" 
+                    />
+                    </div>
+                    <div className="space-y-4 pt-4 border-t border-gray-100">
+                      <h4 className="font-semibold text-gray-800 text-sm">Gửi tin nhắn tự động</h4>
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <div className="relative">
+                          <input type="checkbox" className="sr-only" checked={formData.autoSmsConfirm} onChange={(e) => setFormData({...formData, autoSmsConfirm: e.target.checked})} />
+                          <div className={`block w-10 h-6 rounded-full transition-colors ${formData.autoSmsConfirm ? 'bg-primary' : 'bg-gray-200'}`}></div>
+                          <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${formData.autoSmsConfirm ? 'translate-x-4' : ''}`}></div>
+                        </div>
+                        <span className="text-sm text-gray-700">Tự động gửi SMS khi lịch chuyển sang Đã xác nhận (Confirmed)</span>
+                      </label>
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <div className="relative">
+                          <input type="checkbox" className="sr-only" checked={formData.autoSmsReminder} onChange={(e) => setFormData({...formData, autoSmsReminder: e.target.checked})} />
+                          <div className={`block w-10 h-6 rounded-full transition-colors ${formData.autoSmsReminder ? 'bg-primary' : 'bg-gray-200'}`}></div>
+                          <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${formData.autoSmsReminder ? 'translate-x-4' : ''}`}></div>
+                        </div>
+                        <span className="text-sm text-gray-700">Tự động gửi SMS nhắc lịch (Reminder)</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        ) : activeTab === "social" ? (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {/* Social Media Links Section */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-gray-100 flex items-center gap-2 text-gray-900 font-bold">
+                <Share2 size={20} className="text-primary" />
+                Social Media & Maps
+              </div>
+              <div className="p-6 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                      <Share2 size={16} className="text-blue-600" /> Facebook Page URL
+                    </label>
+                    <input 
+                      type="url" 
+                      value={formData.socialLinks.facebook}
+                      onChange={(e) => setFormData({...formData, socialLinks: {...formData.socialLinks, facebook: e.target.value}})}
+                      placeholder="https://facebook.com/yourpage"
+                      className="w-full p-2.5 rounded-xl border border-gray-200 focus:border-primary outline-none text-sm" 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                      <Share2 size={16} className="text-pink-600" /> Instagram Profile URL
+                    </label>
+                    <input 
+                      type="url" 
+                      value={formData.socialLinks.instagram}
+                      onChange={(e) => setFormData({...formData, socialLinks: {...formData.socialLinks, instagram: e.target.value}})}
+                      placeholder="https://instagram.com/yourprofile"
+                      className="w-full p-2.5 rounded-xl border border-gray-200 focus:border-primary outline-none text-sm" 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                      <Share2 size={16} className="text-black" /> TikTok URL
+                    </label>
+                    <input 
+                      type="url" 
+                      value={formData.socialLinks.tiktok}
+                      onChange={(e) => setFormData({...formData, socialLinks: {...formData.socialLinks, tiktok: e.target.value}})}
+                      placeholder="https://tiktok.com/@youraccount"
+                      className="w-full p-2.5 rounded-xl border border-gray-200 focus:border-primary outline-none text-sm" 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                      <Share2 size={16} className="text-red-600" /> Yelp Business URL
+                    </label>
+                    <input 
+                      type="url" 
+                      value={formData.socialLinks.yelp}
+                      onChange={(e) => setFormData({...formData, socialLinks: {...formData.socialLinks, yelp: e.target.value}})}
+                      placeholder="https://yelp.com/biz/yourbusiness"
+                      className="w-full p-2.5 rounded-xl border border-gray-200 focus:border-primary outline-none text-sm" 
+                    />
+                  </div>
+                  <div className="space-y-2 col-span-1 md:col-span-2">
+                    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                      <MapPin size={16} className="text-green-600" /> Google Maps Location URL
+                    </label>
+                    <input 
+                      type="url" 
+                      value={formData.socialLinks.googleMaps}
+                      onChange={(e) => setFormData({...formData, socialLinks: {...formData.socialLinks, googleMaps: e.target.value}})}
+                      placeholder="https://maps.google.com/?q=..."
+                      className="w-full p-2.5 rounded-xl border border-gray-200 focus:border-primary outline-none text-sm" 
+                    />
+                  </div>
+                </div>
+                
+                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                  <p className="text-xs text-gray-500 italic">
+                    These links will be displayed as clickable icons on the booking confirmation page (Step 7) to encourage customers to follow you or leave reviews.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : activeTab === "chatbot" ? (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-gray-900 font-bold">
+                  <MessageSquare size={20} className="text-primary" />
+                  Chatbot Configuration
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-500">{formData.chatbotEnabled ? 'Enabled' : 'Disabled'}</span>
+                  <button 
+                    type="button"
+                    onClick={() => setFormData({...formData, chatbotEnabled: !formData.chatbotEnabled})}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${formData.chatbotEnabled ? 'bg-primary' : 'bg-gray-200'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.chatbotEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+              </div>
+              <div className="p-6 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Chatbot Type</label>
+                    <select 
+                      value={formData.chatbotConfig.type}
+                      onChange={(e) => handleChatbotConfigChange('type', e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-gray-200 focus:border-primary outline-none bg-white"
+                    >
+                      <option value="whatsapp">WhatsApp Direct</option>
+                      <option value="messenger">Facebook Messenger</option>
+                      <option value="script">Custom Script (Tawk.to, etc.)</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      {formData.chatbotConfig.type === 'whatsapp' ? 'WhatsApp Phone Number' : 
+                       formData.chatbotConfig.type === 'messenger' ? 'Facebook Page ID/Username' : 
+                       'Script URL / Snippet'}
+                    </label>
+                    <input 
+                      type="text" 
+                      value={formData.chatbotConfig.value}
+                      onChange={(e) => handleChatbotConfigChange('value', e.target.value)}
+                      placeholder={formData.chatbotConfig.type === 'whatsapp' ? '+1234567890' : 'YourPageName'}
+                      className="w-full p-2.5 rounded-xl border border-gray-200 focus:border-primary outline-none text-sm" 
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Welcome Message</label>
+                  <textarea 
+                    value={formData.chatbotConfig.welcomeMessage}
+                    onChange={(e) => handleChatbotConfigChange('welcomeMessage', e.target.value)}
+                    rows={2}
+                    className="w-full p-2.5 rounded-xl border border-gray-200 focus:border-primary outline-none text-sm" 
+                  />
+                </div>
+
+                <div className="space-y-4 pt-4 border-t border-gray-100">
+                  <div className="space-y-1">
+                    <label className="text-sm font-bold text-gray-700">Preset Q&A Responses</label>
+                    <p className="text-xs text-gray-500">Configure 5 common questions and their automated answers to show in the chatbot.</p>
+                  </div>
+                  {formData.chatbotConfig.faq?.map((item: any, idx: number) => (
+                    <div key={idx} className="flex gap-3 items-start bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+                      <span className="text-primary font-bold w-4 text-sm mt-2">{idx + 1}.</span>
+                      <div className="flex-1 space-y-3">
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Question</label>
+                          <input 
+                            type="text" 
+                            value={item.q}
+                            onChange={(e) => {
+                              const newFaq = [...formData.chatbotConfig.faq];
+                              newFaq[idx].q = e.target.value;
+                              handleChatbotConfigChange('faq', newFaq);
+                            }}
+                            placeholder="Customer asks..."
+                            className="w-full p-2.5 rounded-lg border border-gray-200 focus:border-primary outline-none text-sm bg-white" 
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Auto Answer</label>
+                          <textarea 
+                            value={item.a}
+                            onChange={(e) => {
+                              const newFaq = [...formData.chatbotConfig.faq];
+                              newFaq[idx].a = e.target.value;
+                              handleChatbotConfigChange('faq', newFaq);
+                            }}
+                            placeholder="Bot replies with..."
+                            rows={2}
+                            className="w-full p-2.5 rounded-lg border border-gray-200 focus:border-primary outline-none text-sm bg-white" 
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                  <p className="text-xs text-gray-500 italic">
+                    {formData.chatbotConfig.type === 'whatsapp' ? 
+                      "Customers will be redirected to WhatsApp to chat with you." : 
+                      formData.chatbotConfig.type === 'messenger' ? 
+                      "Customers will open a Facebook Messenger chat with your page." : 
+                      "Paste your third-party chatbot script URL here."
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {/* Payment Settings Section */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-gray-100 flex items-center gap-2 text-gray-900 font-bold">
+                <DollarSign size={20} className="text-primary" />
+                Payment Integrations
+              </div>
+              <div className="p-6 space-y-8">
+                
+                {/* Payment Selection Checkboxes */}
+                <div className="space-y-3">
+                  <h4 className="font-bold text-sm text-gray-900">Select Active Payment Methods</h4>
+                  <p className="text-xs text-gray-500 mb-3">Choose the payment options you want to offer your customers.</p>
+                  <div className="flex flex-wrap gap-4">
+                    {["Pay in Store", "Credit Card", "PayPal"].map((method) => (
+                      <label key={method} className="flex items-center gap-2 cursor-pointer bg-gray-50 px-4 py-2.5 rounded-xl border border-gray-200 hover:border-gray-300 transition-colors">
+                        <input 
+                          type="checkbox" 
+                          checked={enabledPayments.includes(method)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setEnabledPayments([...enabledPayments, method]);
+                            } else {
+                              setEnabledPayments(enabledPayments.filter(m => m !== method));
+                            }
+                          }}
+                          className="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300" 
+                        />
+                        <span className="text-sm font-medium text-gray-700">{method}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Security Notice */}
+                <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-start gap-3">
+                  <CheckCircle size={20} className="text-blue-600 mt-0.5 shrink-0" />
+                  <div>
+                    <h4 className="text-sm font-bold text-blue-900">Security Best Practices</h4>
+                    <p className="text-xs text-blue-700 mt-1">
+                      • Your API keys are stored securely. Never share your PayPal Secret or Stripe API keys with anyone.<br/>
+                      • We recommend using "Restricted Keys" if your provider supports them.<br/>
+                      • For local payments, ensure your account name matches exactly.
+                    </p>
+                  </div>
+                </div>
+
+                {enabledPayments.includes("Credit Card") && (
+                  <div className="space-y-4 p-4 border border-gray-100 rounded-2xl">
+                    <h4 className="font-bold text-gray-900 flex items-center gap-2">
+                      <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                      Credit Card (Stripe/Square)
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-gray-500 uppercase">API Key / Secret</label>
+                        <input 
+                          type="password" 
+                          value={formData.paymentConfig.creditCard.apiKey}
+                          onChange={(e) => handleConfigChange('creditCard', 'apiKey', e.target.value)}
+                          placeholder="sk_live_..."
+                          className="w-full p-2.5 rounded-lg border border-gray-200 focus:border-primary outline-none text-sm font-mono" 
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-gray-500 uppercase">Merchant ID</label>
+                        <input 
+                          type="text" 
+                          value={formData.paymentConfig.creditCard.merchantId}
+                          onChange={(e) => handleConfigChange('creditCard', 'merchantId', e.target.value)}
+                          placeholder="m_12345"
+                          className="w-full p-2.5 rounded-lg border border-gray-200 focus:border-primary outline-none text-sm" 
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {enabledPayments.includes("PayPal") && (
+                  <div className="space-y-4 p-4 border border-gray-100 rounded-2xl">
+                    <h4 className="font-bold text-gray-900 flex items-center gap-2">
+                      <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                      PayPal Integration
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-gray-500 uppercase">Client ID</label>
+                        <input 
+                          type="text" 
+                          value={formData.paymentConfig.paypal.clientId}
+                          onChange={(e) => handleConfigChange('paypal', 'clientId', e.target.value)}
+                          placeholder="PayPal Client ID"
+                          className="w-full p-2.5 rounded-lg border border-gray-200 focus:border-primary outline-none text-sm" 
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-gray-500 uppercase">Client Secret</label>
+                        <input 
+                          type="password" 
+                          value={formData.paymentConfig.paypal.secret}
+                          onChange={(e) => handleConfigChange('paypal', 'secret', e.target.value)}
+                          placeholder="••••••••••••"
+                          className="w-full p-2.5 rounded-lg border border-gray-200 focus:border-primary outline-none text-sm font-mono" 
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {enabledPayments.includes("Pay in Store") && (
+                  <div className="space-y-4 p-4 border border-gray-100 rounded-2xl bg-gray-50/50">
+                    <h4 className="font-bold text-gray-900 flex items-center gap-2 text-sm">
+                      <CheckCircle size={16} className="text-green-500" />
+                      Local Pay (In-Store)
+                    </h4>
+                    <p className="text-xs text-gray-500 italic">No configuration needed. Customers will pay when they arrive.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Save Button */}
+        <div className="flex items-center justify-between pt-4">
+          <div className="flex items-center gap-2">
+            {saveSuccess && (
+              <span className="text-green-600 text-sm font-medium flex items-center gap-1 animate-in fade-in slide-in-from-left-2">
+                <CheckCircle size={16} /> All changes saved successfully!
+              </span>
+            )}
+          </div>
+          <button 
+            type="submit"
+            disabled={isSaving}
+            className="bg-primary hover:bg-primary-dark text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary/20 flex items-center gap-2 disabled:opacity-50"
+          >
+            {isSaving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
+            Save Changes
+          </button>
+        </div>
+      </form>
+
+      {/* SMS Top Up Modal */}
+      {showSmsModal && (
+        <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                <MessageSquare className="text-primary" /> Top-Up SMS Credits
+              </h3>
+              <button onClick={() => setShowSmsModal(false)} className="text-gray-400 hover:text-gray-600">×</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-gray-500 mb-4">Your current SMS limit is {tenant?.smsLimit}. Buy more credits to continue sending automated notifications.</p>
+              
+              <div className="grid grid-cols-1 gap-3 relative">
+                <button 
+                  type="button"
+                  onClick={() => handleBuySms(500, 10)}
+                  disabled={isBuyingSms}
+                  className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-primary hover:bg-primary/5 transition-all text-left group disabled:opacity-50"
+                >
+                  <div>
+                    <div className="font-bold text-gray-900 group-hover:text-primary">Starter Pack</div>
+                    <div className="text-xs text-gray-500">+500 SMS</div>
+                  </div>
+                  <div className="font-bold text-lg text-gray-900">$10.00</div>
+                </button>
+                
+                <button 
+                  type="button"
+                  onClick={() => handleBuySms(2000, 35)}
+                  disabled={isBuyingSms}
+                  className="flex items-center justify-between p-4 border border-blue-200 bg-blue-50 rounded-xl hover:border-blue-500 hover:bg-blue-100 transition-all text-left group relative overflow-hidden disabled:opacity-50"
+                >
+                  <div className="absolute top-0 right-0 bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">BEST VALUE</div>
+                  <div>
+                    <div className="font-bold text-blue-900">Pro Pack</div>
+                    <div className="text-xs text-blue-700">+2000 SMS</div>
+                  </div>
+                  <div className="font-bold text-lg text-blue-900">$35.00</div>
+                </button>
+
+                <button 
+                  type="button"
+                  onClick={() => handleBuySms(5000, 80)}
+                  disabled={isBuyingSms}
+                  className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-primary hover:bg-primary/5 transition-all text-left group disabled:opacity-50"
+                >
+                  <div>
+                    <div className="font-bold text-gray-900 group-hover:text-primary">Volume Pack</div>
+                    <div className="text-xs text-gray-500">+5000 SMS</div>
+                  </div>
+                  <div className="font-bold text-lg text-gray-900">$80.00</div>
+                </button>
+
+                {isBuyingSms && (
+                  <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-xl">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary mb-2" />
+                    <span className="text-sm font-medium text-gray-700">Processing payment...</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upgrade Plan Modal */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                <CheckCircle className="text-primary" /> Upgrade Subscription Plan
+              </h3>
+              <button onClick={() => setShowUpgradeModal(false)} className="text-gray-400 hover:text-gray-600">×</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-gray-500 mb-4">Your current plan is {tenant?.planType || 'Trial'}. Upgrade to unlock more features, staff members, and limits.</p>
+              
+              <div className="grid grid-cols-1 gap-3 relative">
+                <button 
+                  type="button"
+                  onClick={() => handleUpgradePlan("Basic", 29)}
+                  disabled={isUpgrading}
+                  className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-primary hover:bg-primary/5 transition-all text-left group disabled:opacity-50"
+                >
+                  <div>
+                    <div className="font-bold text-gray-900 group-hover:text-primary">Basic Plan</div>
+                    <div className="text-xs text-gray-500">Up to 3 Staff</div>
+                  </div>
+                  <div className="font-bold text-lg text-gray-900">$29/mo</div>
+                </button>
+                
+                <button 
+                  type="button"
+                  onClick={() => handleUpgradePlan("Pro", 79)}
+                  disabled={isUpgrading}
+                  className="flex items-center justify-between p-4 border border-blue-200 bg-blue-50 rounded-xl hover:border-blue-500 hover:bg-blue-100 transition-all text-left group relative overflow-hidden disabled:opacity-50"
+                >
+                  <div className="absolute top-0 right-0 bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">POPULAR</div>
+                  <div>
+                    <div className="font-bold text-blue-900">Pro Plan</div>
+                    <div className="text-xs text-blue-700">Up to 10 Staff + More Features</div>
+                  </div>
+                  <div className="font-bold text-lg text-blue-900">$79/mo</div>
+                </button>
+
+                <button 
+                  type="button"
+                  onClick={() => handleUpgradePlan("Enterprise", 199)}
+                  disabled={isUpgrading}
+                  className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-primary hover:bg-primary/5 transition-all text-left group disabled:opacity-50"
+                >
+                  <div>
+                    <div className="font-bold text-gray-900 group-hover:text-primary">Enterprise Plan</div>
+                    <div className="text-xs text-gray-500">Unlimited Everything</div>
+                  </div>
+                  <div className="font-bold text-lg text-gray-900">$199/mo</div>
+                </button>
+
+                {isUpgrading && (
+                  <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-xl">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary mb-2" />
+                    <span className="text-sm font-medium text-gray-700">Sending request...</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

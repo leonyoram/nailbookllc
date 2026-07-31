@@ -21,7 +21,7 @@ async function main() {
   
   for (const model of models) {
     try {
-      // @ts-ignore
+      // @ts-expect-error
       const rawData = await prisma[model].findMany();
       // Redact sensitive fields
       const redactedData = rawData.map((item: any) => {

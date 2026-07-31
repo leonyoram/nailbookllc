@@ -45,7 +45,8 @@ export default function PushNotificationManager({ tenantId, variant = "icon" }: 
         throw new Error("Permission denied");
       }
 
-      const registration = await registerServiceWorker();
+      await registerServiceWorker();
+      const registration = await navigator.serviceWorker.ready;
       const publicVapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "BJVb7S3LDy77F17_7U3-GUKRamS8nrho-86psTOFQ7wxwoLrQdi40zDizEJuzA4rGfGx8h_z8sFZ-5dndI8sKuY";
       
       if (!publicVapidKey) {

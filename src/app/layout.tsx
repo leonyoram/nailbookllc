@@ -43,7 +43,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${dmSans.variable} h-full antialiased`}>
+    <html lang="en" className={`${dmSans.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
         <link href="https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&display=swap" rel="stylesheet" />
         <style dangerouslySetInnerHTML={{__html: `
@@ -51,8 +51,9 @@ export default function RootLayout({
             --font-clash-display: 'Clash Display', sans-serif;
           }
         `}} />
+        <script dangerouslySetInnerHTML={{ __html: `window.zaloJSV2 = window.zaloJSV2 || {};` }} />
       </head>
-      <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
+      <body className="min-h-full flex flex-col bg-background text-foreground font-sans" suppressHydrationWarning>
         <Script
           id="schema-org"
           type="application/ld+json"

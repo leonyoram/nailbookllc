@@ -88,6 +88,8 @@ model Tenant {
   smsTemplates           Json?     // JSON
   smsLimit               Int       @default(100) // -1 for unlimited
   smsSent                Int       @default(0)
+  autoSmsConfirm         Boolean   @default(false)
+  autoSmsReminder        Boolean   @default(false)
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
@@ -106,6 +108,8 @@ model Tenant {
   reviews           Review[]
   promotions        Promotion[]
   payslips          Payslip[]
+  smsLogs           SmsLog[]
+  smsTemplatesDb    SmsTemplate[]
 }
 
 model Category {
@@ -248,6 +252,17 @@ model SystemSettings {
   smtpUser            String?
   smtpPass            String?
   smtpFrom            String?
+
+  // Landing Page Content
+  contactPhone        String?
+  contactEmail        String?
+  facebookLink        String?
+  instagramLink       String?
+  tiktokLink          String?
+  heroTitle           String?
+  heroSubtitle        String?
+  aboutContent        String?
+  videoUrl            String?
 
   updatedAt           DateTime @updatedAt
 }
@@ -403,4 +418,29 @@ model Payslip {
 
   @@unique([staffId, startDate, endDate])
   @@index([tenantId, status])
+}
+
+model SmsTemplate {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  content   String
+  type      String   @default("promo")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model SmsLog {
+  id        String   @id @default(uuid())
+  tenantId  String
+  toPhone   String
+  content   String
+  status    String   @default("Sent")
+  error     String?
+  type      String   @default("promo")
+  createdAt DateTime @default(now())
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }

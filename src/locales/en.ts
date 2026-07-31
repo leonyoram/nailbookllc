@@ -28,5 +28,19 @@ export const en = {
     noServices: "No services available at the moment.",
     continue: "Continue",
     min: "min"
+  },
+  admin: {
+    addBooking: "Add Booking",
+    dashboard: "Dashboard",
+    calendar: "Calendar",
+    services: "Services",
+    staff: "Staff",
+    customers: "Customers",
+    settings: "Settings",
+    coupons: "Coupons",
+    reviews: "Reviews",
+    logout: "Log Out",
+    welcome: "Welcome back",
+    search: "Search"
   }
 };

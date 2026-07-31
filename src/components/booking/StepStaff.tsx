@@ -86,7 +86,7 @@ export function StepStaff({ tenant }: { tenant: any }) {
       <div className="absolute bottom-0 left-0 w-full p-6 bg-white border-t">
         <button
           onClick={nextStep}
-          className="w-full py-4 rounded-xl bg-accent-1 hover:bg-accent-2 text-white font-semibold text-lg transition-colors shadow-[0_4px_14px_0_rgba(190,34,48,0.39)]"
+          className="w-full py-4 rounded-xl bg-primary hover:bg-primary/90 text-white font-semibold text-lg transition-colors shadow-lg shadow-primary/30"
         >
           Continue
         </button>

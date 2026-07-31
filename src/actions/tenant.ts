@@ -24,14 +24,16 @@ export async function runMaintenance() {
     });
     
     if (tenantsWithNullDue.length > 0) {
-      for (const t of tenantsWithNullDue) {
-        const newDue = new Date(t.createdAt);
-        newDue.setFullYear(newDue.getFullYear() + 1);
-        await prisma.tenant.update({
-          where: { id: t.id },
-          data: { dueDate: newDue }
-        });
-      }
+      await Promise.all(
+        tenantsWithNullDue.map((t) => {
+          const newDue = new Date(t.createdAt);
+          newDue.setFullYear(newDue.getFullYear() + 1);
+          return prisma.tenant.update({
+            where: { id: t.id },
+            data: { dueDate: newDue }
+          });
+        })
+      );
     }
 
     // 2. Auto-expire check: Transition "Active" to "Pending" if dueDate has passed
@@ -163,6 +165,8 @@ export async function updateTenantSettings(tenantId: string, data: any) {
         smsEnabled: data.smsEnabled !== undefined ? data.smsEnabled : undefined,
         autoApproveBooking: data.autoApproveBooking !== undefined ? data.autoApproveBooking : undefined,
         smsTemplates: data.smsTemplates !== undefined ? data.smsTemplates : undefined,
+        autoSmsConfirm: data.autoSmsConfirm !== undefined ? data.autoSmsConfirm : undefined,
+        autoSmsReminder: data.autoSmsReminder !== undefined ? data.autoSmsReminder : undefined,
         smsLimit: data.smsLimit !== undefined ? parseInt(data.smsLimit) : undefined,
         planType: data.planType !== undefined ? data.planType : undefined,
         staffLimit: data.staffLimit !== undefined ? parseInt(data.staffLimit) : undefined,
@@ -265,17 +269,22 @@ export async function updateWorkingHours(tenantId: string, data: { workingHours?
 
 export async function getTenantStats(tenantId: string) {
   try {
-    const bookings = await prisma.booking.findMany({
-      where: { tenantId, status: { not: "Cancelled" } },
-      include: { service: true }
-    });
+    const [bookings, staffCount] = await Promise.all([
+      prisma.booking.findMany({
+        where: { tenantId, status: { not: "Cancelled" } },
+        select: {
+          service: {
+            select: { id: true, name: true, price: true }
+          }
+        }
+      }),
+      prisma.staff.count({
+        where: { tenantId }
+      })
+    ]);
 
     const revenue = bookings.reduce((sum, b) => sum + (b.service?.price || 0), 0);
     const bookingCount = bookings.length;
-
-    const staffCount = await prisma.staff.count({
-      where: { tenantId }
-    });
 
     const serviceCounts: Record<string, {name: string, count: number}> = {};
     bookings.forEach(b => {

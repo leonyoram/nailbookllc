@@ -36,12 +36,34 @@ export async function sendSMSPromotion(tenantId: string, message: string, recipi
     const results = await Promise.allSettled(
       recipients.map(async (to) => {
         // Can format phone number here before sending
-        const messageResponse = await client.messages.create({
-          body: message,
-          from: fromNumber,
-          to,
-        });
-        return messageResponse.sid;
+        let sid = "failed";
+        let status = "Sent";
+        let errStr = null;
+        try {
+          const messageResponse = await client.messages.create({
+            body: message,
+            from: fromNumber,
+            to,
+          });
+          sid = messageResponse.sid;
+        } catch (e: any) {
+          status = "Failed";
+          errStr = e.message;
+          throw e; // rethrow to be caught by allSettled
+        } finally {
+          // Log to DB
+          await prisma.smsLog.create({
+            data: {
+              tenantId,
+              toPhone: to,
+              content: message,
+              status,
+              error: errStr,
+              type: "promo"
+            }
+          });
+        }
+        return sid;
       })
     );
 
@@ -99,22 +121,43 @@ export async function sendSMS(tenantId: string, to: string, message: string) {
       return { success: false, error: 'Twilio settings not configured' };
     }
 
-    const client = twilio(settings.twilioSid, settings.twilioAuthToken);
-    const result = await client.messages.create({
-      body: message,
-      from: settings.twilioPhone,
-      to,
-    });
+    let sid = "failed";
+    let status = "Sent";
+    let errStr = null;
+    
+    try {
+      const client = twilio(settings.twilioSid, settings.twilioAuthToken);
+      const result = await client.messages.create({
+        body: message,
+        from: settings.twilioPhone,
+        to,
+      });
+      sid = result.sid;
+      
+      await prisma.tenant.update({
+        where: { id: tenantId },
+        data: { smsSent: { increment: 1 } }
+      });
+    } catch (e: any) {
+      status = "Failed";
+      errStr = e.message;
+      throw e;
+    } finally {
+      await prisma.smsLog.create({
+        data: {
+          tenantId,
+          toPhone: to,
+          content: message,
+          status,
+          error: errStr,
+          type: "system"
+        }
+      });
+    }
 
-    await prisma.tenant.update({
-      where: { id: tenantId },
-      data: { smsSent: { increment: 1 } }
-    });
-
-    return { success: true, sid: result.sid };
+    return { success: true, sid };
   } catch (error: any) {
     console.error('Error sending single SMS:', error);
     return { success: false, error: error.message };
   }
 }
-

@@ -12,12 +12,18 @@ export function StepConfirm({ tenant }: { tenant: any }) {
   const state = useBookingStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState("");
   const [isValidating, setIsValidating] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const { t, formatCurrency, formatDate } = useTranslation();
 
   const totalPrice = state.selectedServices.reduce((sum, s) => {
-    // Basic parsing for price string like "50+" or "50"
     const val = parseFloat(s.price.replace(/[^0-9.]/g, '')) || 0;
     return sum + val;
   }, 0);
@@ -71,6 +77,9 @@ export function StepConfirm({ tenant }: { tenant: any }) {
       });
 
       if (response.success) {
+        if (response.bookings && response.bookings.length > 0) {
+          setCreatedBookingId(response.bookings[0].id);
+        }
         setIsSuccess(true);
       } else {
         alert(response.error || "Something went wrong.");
@@ -80,6 +89,31 @@ export function StepConfirm({ tenant }: { tenant: any }) {
       alert("Failed to submit booking");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmitFeedback = async () => {
+    if (!createdBookingId) return;
+    
+    setIsSubmittingFeedback(true);
+    try {
+      const { createReview } = await import('@/actions/review');
+      const res = await createReview({
+        tenantId: tenant.id,
+        bookingId: createdBookingId,
+        rating,
+        comment: feedbackText
+      });
+      if (res.success) {
+        setFeedbackSubmitted(true);
+      } else {
+        alert(res.error || "Failed to submit feedback.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("An error occurred while submitting feedback.");
+    } finally {
+      setIsSubmittingFeedback(false);
     }
   };
 
@@ -97,28 +131,83 @@ export function StepConfirm({ tenant }: { tenant: any }) {
         <div className="bg-white border-2 border-yellow-100 shadow-sm w-full max-w-sm rounded-2xl p-6 mb-8 transition-transform hover:-translate-y-1">
           <h3 className="font-bold text-gray-900 mb-2">How was your experience?</h3>
           <p className="text-sm text-gray-500 mb-4">Please support us by leaving a 5-star review on Google Maps. It means the world to us!</p>
-          <a 
-            href={tenant.googleReviewUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(tenant.name + " " + (tenant.location || ""))}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex justify-center gap-2 group cursor-pointer"
-            title="Leave a 5-star review on Google"
-          >
-            {[1, 2, 3, 4, 5].map((star) => (
-              <Star 
-                key={star} 
-                className="w-10 h-10 text-yellow-400 fill-yellow-400 transform transition-transform group-hover:scale-110 drop-shadow-sm" 
+          
+          {feedbackSubmitted ? (
+            <div className="text-green-600 font-medium py-4 bg-green-50 rounded-xl">Thank you for your feedback!</div>
+          ) : showFeedback ? (
+            <div className="animate-in fade-in zoom-in duration-300">
+              <textarea
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+                placeholder="Please tell us how we can improve..."
+                className="w-full p-3 border border-gray-200 rounded-xl focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 outline-none text-sm min-h-[100px] mb-3"
               />
-            ))}
-          </a>
-          <a 
-            href={tenant.googleReviewUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(tenant.name + " " + (tenant.location || ""))}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:text-blue-700"
-          >
-            Write a review <ExternalLink size={14} />
-          </a>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setShowFeedback(false)}
+                  disabled={isSubmittingFeedback}
+                  className="flex-1 py-2 rounded-lg border border-gray-200 text-gray-600 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleSubmitFeedback}
+                  disabled={isSubmittingFeedback || !feedbackText.trim()}
+                  className="flex-1 py-2 rounded-lg bg-yellow-400 text-yellow-900 font-medium hover:bg-yellow-500 transition-colors disabled:opacity-50 flex items-center justify-center"
+                >
+                  {isSubmittingFeedback ? <Loader2 size={16} className="animate-spin" /> : "Submit"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex justify-center gap-2 group cursor-pointer mb-4">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onMouseEnter={() => setHoverRating(star)}
+                    onMouseLeave={() => setHoverRating(0)}
+                    onClick={() => {
+                      if (star === 5) {
+                        if (createdBookingId) {
+                           import('@/actions/review').then(({ createReview }) => {
+                             createReview({
+                               tenantId: tenant.id,
+                               bookingId: createdBookingId,
+                               rating: 5,
+                               comment: ""
+                             });
+                           });
+                        }
+                        const url = tenant.googleReviewUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(tenant.name + " " + (tenant.location || ""))}`;
+                        window.open(url, '_blank');
+                      } else {
+                        setRating(star);
+                        setShowFeedback(true);
+                      }
+                    }}
+                  >
+                    <Star 
+                      className={`w-10 h-10 transform transition-all ${
+                        star <= (hoverRating || rating || 5)
+                          ? 'text-yellow-400 fill-yellow-400 hover:scale-110 drop-shadow-sm' 
+                          : 'text-gray-200 fill-gray-200'
+                      }`} 
+                    />
+                  </button>
+                ))}
+              </div>
+              <a 
+                href={tenant.googleReviewUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(tenant.name + " " + (tenant.location || ""))}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:text-blue-700"
+              >
+                Write a review <ExternalLink size={14} />
+              </a>
+            </>
+          )}
  
           {/* Social Links */}
           {(() => {
@@ -360,7 +449,7 @@ export function StepConfirm({ tenant }: { tenant: any }) {
         <button
           onClick={handleConfirm}
           disabled={isSubmitting}
-          className="w-full flex items-center justify-center py-4 rounded-xl bg-accent-1 hover:bg-accent-2 text-white font-semibold text-lg transition-colors shadow-[0_4px_14px_0_rgba(190,34,48,0.39)] max-w-3xl mx-auto disabled:opacity-70"
+          className="w-full flex items-center justify-center py-4 rounded-xl bg-primary hover:bg-primary/90 text-white font-semibold text-lg transition-colors shadow-lg shadow-primary/30 max-w-3xl mx-auto disabled:opacity-70"
         >
           {isSubmitting ? (
             <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />

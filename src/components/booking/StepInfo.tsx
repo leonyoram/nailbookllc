@@ -1,7 +1,7 @@
 "use client";
 
 import { useBookingStore } from "@/store/useBookingStore";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { checkCustomerLoyalty } from "@/actions/loyalty";
 import { getUnusedPromotion } from "@/actions/promotion";
 import { Loader2, Award, Gift } from "lucide-react";
@@ -22,17 +22,7 @@ export function StepInfo({ tenant }: { tenant: any }) {
   const [localInfo, setLocalInfo] = useState(customerInfo);
   const [isCheckingLoyalty, setIsCheckingLoyalty] = useState(false);
 
-  useEffect(() => {
-    // Pre-fill phone if saved in localStorage (from Lucky Wheel)
-    const savedPhone = localStorage.getItem("customer_phone");
-    if (savedPhone && !localInfo.phone) {
-      setLocalInfo(prev => ({ ...prev, phone: savedPhone }));
-      // We'll trigger the loyalty check immediately for the saved phone
-      triggerLoyaltyCheck(savedPhone, localInfo.countryCode);
-    }
-  }, []);
-
-  const triggerLoyaltyCheck = async (phone: string, countryCode: string) => {
+  const triggerLoyaltyCheck = useCallback(async (phone: string, countryCode: string) => {
     if (phone.trim().length < 7) return;
     
     setIsCheckingLoyalty(true);
@@ -63,7 +53,17 @@ export function StepInfo({ tenant }: { tenant: any }) {
     } finally {
       setIsCheckingLoyalty(false);
     }
-  };
+  }, [tenant.id, setLoyaltyStatus, setPromotionPrize]);
+
+  useEffect(() => {
+    // Pre-fill phone if saved in localStorage (from Lucky Wheel)
+    const savedPhone = localStorage.getItem("customer_phone");
+    if (savedPhone && !localInfo.phone) {
+      setLocalInfo(prev => ({ ...prev, phone: savedPhone }));
+      // We'll trigger the loyalty check immediately for the saved phone
+      triggerLoyaltyCheck(savedPhone, localInfo.countryCode);
+    }
+  }, [triggerLoyaltyCheck, localInfo.countryCode, localInfo.phone]);
 
   const handlePhoneBlur = () => {
     triggerLoyaltyCheck(localInfo.phone, localInfo.countryCode);
@@ -175,7 +175,7 @@ export function StepInfo({ tenant }: { tenant: any }) {
         <button
           onClick={handleContinue}
           disabled={!isValid || isCheckingLoyalty}
-          className="w-full py-4 rounded-xl bg-accent-1 hover:bg-accent-2 text-white font-semibold text-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_14px_0_rgba(190,34,48,0.39)] max-w-3xl mx-auto block flex justify-center items-center gap-2"
+          className="w-full py-4 rounded-xl bg-primary hover:bg-primary/90 text-white font-semibold text-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/30 max-w-3xl mx-auto block flex justify-center items-center gap-2"
         >
           {isCheckingLoyalty && <Loader2 className="animate-spin w-5 h-5" />}
           Continue
