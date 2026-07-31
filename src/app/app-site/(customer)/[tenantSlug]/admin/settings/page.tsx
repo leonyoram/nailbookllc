@@ -545,8 +545,6 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
-
-          </div>
         ) : activeTab === "social" ? (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
             {/* Social Media Links Section */}
