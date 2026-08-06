@@ -1,458 +1,78 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
-}
-
-enum BookingStatus {
-  Pending
-  Confirmed
-  Cancelled
-  Completed
-}
-
-enum PaymentStatus {
-  Unpaid
-  Partial
-  Paid
-}
-
-enum AttendanceStatus {
-  Present
-  Absent
-  Late
-  Half_day
-}
-
-enum ReviewStatus {
-  Pending
-  Published
-  Hidden
-}
-
-enum PromotionType {
-  percentage
-  fixed
-}
-
-model Tenant {
-  id                     String    @id @default(uuid())
-  slug                   String    @unique
-  name                   String
-  adminEmail             String
-  adminPassword          String
-  itPassword             String?
-  themeColor             String    @default("#000000")
-  logo                   String?
-  location               String?
-  ownerName              String?
-  adminUsername          String?   @unique
-  businessType           String?
-  googleMapUrl           String?
-  phone                  String?
-  bookingPhone           String?
-  googleReviewUrl        String?
-  socialLinks            String?
-  payments               Json?     // JSON
-  paymentConfig          Json?     // JSON
-  slotInterval           Int       @default(30)
-  minLeadTime            Int       @default(60)
-  luckyWheelEnabled      Boolean   @default(false)
-  luckyWheelLastDisabled DateTime?
-  luckyWheelConfig       Json?     // JSON
-  chatbotEnabled         Boolean   @default(false)
-  chatbotConfig          Json?     // JSON
-  workingHours           Json?     // JSON
-  holidays               Json?     // JSON
-  status                 String    @default("Active")
-  planType               String    @default("Trial")
-  stripeCustomerId       String?
-  stripeSubscriptionId   String?
-  stripePriceId          String?
-  stripeCurrentPeriodEnd DateTime?
-  staffLimit             Int       @default(1)
-  dueDate                DateTime?
-  region                 String    @default("VN")
-  timezone               String    @default("Asia/Ho_Chi_Minh")
-  currency               String    @default("VND")
-  locale                 String    @default("vi")
-  defaultSalaryCycle     String    @default("Monthly")
-  enabledFeatures        Json      @default("[]") // JSON
-  requireDeposit         Boolean   @default(false)
-  depositRate            Float     @default(0)
-  smsEnabled             Boolean   @default(false)
-  autoApproveBooking     Boolean   @default(false)
-  smsTemplates           Json?     // JSON
-  smsLimit               Int       @default(100) // -1 for unlimited
-  smsSent                Int       @default(0)
-  autoSmsConfirm         Boolean   @default(false)
-  autoSmsReminder        Boolean   @default(false)
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
-
-  services          Service[]
-  categories        Category[]
-  staff             Staff[]
-  bookings          Booking[]
-  customers         Customer[]
-  promotionClaims   PromotionClaim[]
-  coupons           Coupon[]
-  notifications     Notification[]
-  pushSubscriptions PushSubscription[]
-  attendances       Attendance[]
-  supportMessages   SupportMessage[]
-  commissions       Commission[]
-  reviews           Review[]
-  promotions        Promotion[]
-  payslips          Payslip[]
-  smsLogs           SmsLog[]
-  smsTemplatesDb    SmsTemplate[]
-}
-
-model Category {
-  id        String   @id @default(uuid())
-  tenantId  String
-  name      String
-  createdAt DateTime @default(now())
-
-  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  services  Service[]
-
-  @@unique([tenantId, name])
-}
-
-model SupportMessage {
-  id        String   @id @default(uuid())
-  tenantId  String
-  sender    String
-  content   String
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@index([tenantId, createdAt])
-}
-
-model Service {
-  id         String   @id @default(uuid())
-  tenantId   String
-  name       String
-  price      Float
-  duration   Int      // in minutes
-  categoryId String?
-  createdAt  DateTime @default(now())
-
-  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  bookings Booking[]
-
-  @@index([tenantId, categoryId])
-}
-
-model PushSubscription {
-  id        String   @id @default(uuid())
-  tenantId  String
-  endpoint  String   @unique
-  auth      String
-  p256dh    String
-  createdAt DateTime @default(now())
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-}
-
-model Staff {
-  id             String   @id @default(uuid())
-  tenantId       String
-  name           String
-  role           String   @default("Staff")
-  phone          String?
-  loginPassword  String?
-  workHours      Json?
-  dayOff         Json?
-  timeOffDates   Json?
-  skills         Json?    // Array of category IDs
-  commissionRate Float    @default(0) // percentage
-  baseSalary     Float    @default(0)
-  salaryCycle    String   @default("Monthly")
-  salaryType     String   @default("Commission")
-  createdAt      DateTime @default(now())
-
-  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  bookings    Booking[]
-  attendances Attendance[]
-  commissions Commission[]
-  payslips    Payslip[]
-}
-
-model Booking {
-  id            String        @id @default(uuid())
-  tenantId      String
-  customerName  String
-  customerPhone String?
-  serviceId     String
-  staffId       String?
-  customerId    String?
-  date          DateTime      @db.Date
-  time          String        // Still keep as string HH:MM for simplicity in scheduling UI, merging to DB.Time can cause timezone offset issues.
-  notes         String?
-  status        BookingStatus @default(Pending)
-  depositAmount Float         @default(0)
-  tipAmount     Float         @default(0)
-  paymentStatus     PaymentStatus @default(Unpaid)
-  reminderSent      Boolean       @default(false)
-  reviewRequestSent Boolean       @default(false)
-  createdAt         DateTime      @default(now())
-
-  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  service    Service     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  staff      Staff?      @relation(fields: [staffId], references: [id], onDelete: SetNull)
-  customer   Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  commission Commission?
-  review     Review?
-
-  @@index([tenantId, date, status])
-  @@index([staffId])
-  @@index([customerId])
-}
-
-model Customer {
-  id        String   @id @default(uuid())
-  tenantId  String
-  name      String
-  phone     String?
-  email     String?
-  vip       Boolean  @default(false)
-  points    Int      @default(0)
-  createdAt DateTime @default(now())
-
-  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  bookings Booking[]
-  reviews  Review[]
-
-  @@index([tenantId, phone])
-  @@index([tenantId, name])
-}
-
-model SystemSettings {
-  id                  String   @id @default("global")
-  twilioSid           String?
-  twilioAuthToken     String?
-  twilioPhone         String?
-  pendingSmsTemplate  String?
-  approvedSmsTemplate String?
-  rejectedSmsTemplate String?
-  
-  smtpProvider        String?  @default("other")
-  smtpHost            String?
-  smtpPort            Int?
-  smtpUser            String?
-  smtpPass            String?
-  smtpFrom            String?
-
-  // Landing Page Content
-  contactPhone        String?
-  contactEmail        String?
-  facebookLink        String?
-  instagramLink       String?
-  tiktokLink          String?
-  heroTitle           String?
-  heroSubtitle        String?
-  aboutContent        String?
-  videoUrl            String?
-
-  updatedAt           DateTime @updatedAt
-}
-
-model PromotionClaim {
-  id        String   @id @default(uuid())
-  tenantId  String
-  phone     String
-  prize     String
-  status    String   @default("Unused") // Unused, Redeemed
-  createdAt DateTime @default(now())
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@unique([tenantId, phone])
-}
-
-model Coupon {
-  id            String   @id @default(uuid())
-  tenantId      String
-  name          String
-  code          String
-  discountValue Float
-  startDate     DateTime
-  endDate       DateTime
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@unique([tenantId, code])
-  @@index([tenantId, isActive])
-}
-
-model Notification {
-  id        String   @id @default(uuid())
-  tenantId  String
-  type      String
-  title     String
-  message   String
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@index([tenantId, createdAt])
-}
-
-model SuperAdminUser {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  name      String?
-  createdAt DateTime @default(now())
-}
-
-model Attendance {
-  id        String           @id @default(uuid())
-  tenantId  String
-  staffId   String
-  date      DateTime         @db.Date
-  clockIn   DateTime?        @db.Time
-  clockOut  DateTime?        @db.Time
-  status    AttendanceStatus @default(Present)
-  notes     String?
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  staff  Staff  @relation(fields: [staffId], references: [id], onDelete: Cascade)
-
-  @@unique([tenantId, staffId, date])
-  @@index([staffId])
-  @@index([date])
-}
-
-model Commission {
-  id        String   @id @default(uuid())
-  tenantId  String
-  staffId   String
-  bookingId String   @unique
-  amount    Float
-  status    String   @default("Pending")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-
-  @@index([tenantId, status])
-  @@index([staffId])
-}
-
-model Review {
-  id         String       @id @default(uuid())
-  tenantId   String
-  bookingId  String       @unique
-  customerId String?
-  rating     Int          @default(5)
-  comment    String?
-  status     ReviewStatus @default(Pending)
-  createdAt  DateTime     @default(now())
-
-  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  booking   Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  customer  Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
-
-  @@index([tenantId, rating])
-}
-
-model Promotion {
-  id          String        @id @default(uuid())
-  tenantId    String
-  title       String
-  description String?
-  discount    Float
-  type        PromotionType @default(percentage)
-  startTime   DateTime?     @db.Time
-  endTime     DateTime?     @db.Time
-  dayOfWeek   Json?         // e.g., ["Tuesday", "Wednesday"]
-  isActive    Boolean       @default(true)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@index([tenantId, isActive])
-}
-
-
-model Payslip {
-  id              String   @id @default(uuid())
-  tenantId        String
-  staffId         String
-  startDate       DateTime @db.Date
-  endDate         DateTime @db.Date
-  baseSalary      Float    @default(0)
-  commissionTotal Float    @default(0)
-  tipsTotal       Float    @default(0)
-  deductions      Float    @default(0) // Penalties for absent/late
-  allowances      Float    @default(0) // Bonuses
-  netPay          Float    @default(0) // Final amount
-  status          String   @default("Draft") // Draft, Approved, Paid
-  paymentDate     DateTime?
-  notes           String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  staff  Staff  @relation(fields: [staffId], references: [id], onDelete: Cascade)
-
-  @@unique([staffId, startDate, endDate])
-  @@index([tenantId, status])
-}
-
-model SmsTemplate {
-  id        String   @id @default(uuid())
-  tenantId  String
-  name      String
-  content   String
-  type      String   @default("promo")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-}
-
-model SmsLog {
-  id        String   @id @default(uuid())
-  tenantId  String
-  toPhone   String
-  content   String
-  status    String   @default("Sent")
-  error     String?
-  type      String   @default("promo")
-  createdAt DateTime @default(now())
-
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model ContactMessage {
+  id          String   @id @default(cuid())
+  name        String
+  phone       String
+  salonName   String?
+  email       String?
+  serviceType String?
+  staffCount  String?
+  notes       String?
+  status      String   @default("NEW") // NEW, READ, RESOLVED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SystemSetting {
   id        String   @id @default(cuid())
-  name      String
-  phone     String
-  salonName String?
-  notes     String?
-  status    String   @default("NEW")
+  key       String   @unique
+  value     String
+  label     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Tenant {
+  id          String   @id @default(cuid())
+  slug        String   @unique // Ví dụ: 'ten-tiem'
+  name        String
+  phone       String?
+  address     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users        User[]
+  appointments Appointment[]
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // Mật khẩu đã được mã hóa
+  name      String
+  role      String   @default("TENANT_ADMIN") // SUPER_ADMIN, TENANT_ADMIN, STAFF
+  
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Appointment {
+  id            String   @id @default(cuid())
+  customerName  String
+  customerPhone String
+  date          DateTime
+  service       String
+  status        String   @default("PENDING") // PENDING, CONFIRMED, CANCELLED, COMPLETED
+  
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

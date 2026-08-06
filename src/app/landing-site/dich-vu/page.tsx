@@ -5,8 +5,8 @@ import Image from "next/image";
 import { cookies } from "next/headers";
 
 export const metadata = {
-  title: "Tính Năng Nổi Bật - Đặt Lịch & Quản Lý",
-  description: "Chi tiết các tính năng ưu việt của Nail Book 24/7: Đặt lịch online, quản lý nhân sự, báo cáo doanh thu, và Marketing tự động.",
+  title: "Dịch Vụ & Bảng Giá",
+  description: "Chi tiết các tính năng giải pháp và bảng giá cho Tiệm Nail, Hair Salon, Spa.",
 };
 
 const Z_PATTERN_FEATURES = [

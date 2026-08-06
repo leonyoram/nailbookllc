@@ -10,10 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin, Phone, Mail, Clock } from "lucide-react";
 import { submitContactForm } from "@/app/landing-site/actions/contact";
-import { getSystemSettings } from "@/lib/landing_settings";
+import { getSystemSettings } from "@/lib/settings";
 
 const leadSchema = z.object({
   fullName: z.string().min(2, "Tên phải có ít nhất 2 ký tự"),
+  email: z.string().email("Email không hợp lệ"),
   phone: z.string().min(10, "Số điện thoại không hợp lệ"),
   salonName: z.string().min(2, "Tên tiệm không hợp lệ"),
   serviceType: z.string().min(1, "Vui lòng chọn loại hình dịch vụ"),
@@ -44,8 +45,11 @@ export default function ContactPage() {
     try {
       const formData = new FormData();
       formData.append("name", data.fullName);
+      formData.append("email", data.email);
       formData.append("phone", data.phone);
       formData.append("salonName", data.salonName);
+      formData.append("serviceType", data.serviceType);
+      formData.append("staffCount", data.staffCount);
       
       const notes = `Dịch vụ: ${data.serviceType}, Quy mô: ${data.staffCount}`;
       formData.append("notes", notes);
@@ -137,6 +141,12 @@ export default function ContactPage() {
                     <Label htmlFor="fullName">Họ và Tên</Label>
                     <Input id="fullName" placeholder="Nhập họ và tên..." {...register("fullName")} />
                     {errors.fullName && <p className="text-sm text-red-500">{errors.fullName.message}</p>}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" placeholder="Nhập email của bạn..." {...register("email")} />
+                    {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
                   </div>
                   
                   <div className="space-y-2">

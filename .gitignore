@@ -1,8 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-node_modules/
-.expo/
+/node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -42,15 +41,3 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
-
-# databases
-*.db
-*.db-journal
-
-# next-pwa
-public/sw.js
-public/sw.js.map
-public/workbox-*.js
-public/worker-*.js
-public/fallback-*.js
-public/swe-worker-*.js

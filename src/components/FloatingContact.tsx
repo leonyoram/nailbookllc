@@ -31,7 +31,7 @@ export function FloatingContact({ phone = "+18325988899" }: { phone?: string }) 
 
       <a 
         href={`tel:${cleanPhone}`}
-        className="relative flex items-center justify-center w-14 h-14 md:w-16 md:h-16 bg-rose-500 text-white rounded-full shadow-[0_0_20px_rgba(244,63,94,0.4)] hover:shadow-[0_0_30px_rgba(244,63,94,0.6)] hover:bg-rose-600 transition-all hover:scale-110 active:scale-95"
+        className="relative flex items-center justify-center w-14 h-14 md:w-16 md:h-16 bg-gradient-to-tr from-rose-500 to-pink-400/90 backdrop-blur-md border border-white/20 text-white rounded-full shadow-[0_8px_32px_rgba(244,63,94,0.4)] hover:shadow-[0_8px_32px_rgba(244,63,94,0.7)] hover:from-rose-600 hover:to-pink-500 transition-all duration-300 hover:scale-110 active:scale-95"
       >
         {/* Pulsing rings for attention */}
         <span className="absolute inset-0 rounded-full border-2 border-rose-500 opacity-50 animate-[ping_2.5s_cubic-bezier(0,0,0.2,1)_infinite]"></span>

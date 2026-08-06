@@ -1,83 +1,36 @@
-# Booking Multi-tenant SaaS
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-Nền tảng Web App Booking Đa khách thuê (Multi-tenant) dành cho hệ thống các tiệm Nail, Head Spa.
-Dự án sử dụng **Next.js**, **Tailwind CSS**, **Firebase**, và **Playwright** cho E2E Testing.
+## Getting Started
 
-## Yêu cầu hệ thống
-
-- Node.js (phiên bản 18.x trở lên)
-- NPM hoặc Yarn
-
-## Hướng dẫn cài đặt
-
-**1. Clone dự án và cài đặt thư viện**
-
-```bash
-# Cài đặt các thư viện cần thiết
-npm install
-```
-
-**2. Cài đặt trình duyệt cho Playwright (Dùng cho test tự động)**
-
-```bash
-npx playwright install
-```
-
-**3. Cấu hình biến môi trường**
-
-Tạo file `.env.local` ở thư mục gốc và thêm các thông tin sau (sẽ được cấp sau khi setup Firebase/Twilio):
-
-```env
-NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
-TWILIO_ACCOUNT_SID=your_twilio_sid
-TWILIO_AUTH_TOKEN=your_twilio_token
-TWILIO_PHONE_NUMBER=your_twilio_phone
-```
-
-## Hướng dẫn chạy dự án
-
-**1. Môi trường Development**
+First, run the development server:
 
 ```bash
 npm run dev
-```
-Trang web sẽ chạy tại `http://localhost:3000`.
-- Giao diện khách hàng: `http://localhost:3000/[ten-tiem]`
-- Giao diện Chủ tiệm: `http://localhost:3000/admin`
-- Giao diện Super Admin: `http://localhost:3000/super-admin`
-
-**2. Build cho Production**
-
-```bash
-npm run build
-npm run start
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-## Hướng dẫn chạy Automated E2E Testing (Playwright)
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-Kịch bản test tự động sẽ giả lập một thiết bị di động (Mobile view), chạy qua toàn bộ 7 bước đặt lịch (từ việc chọn dịch vụ đến khi hoàn tất), tự động chụp ảnh toàn màn hình và quay video.
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-**1. Chạy test và xem kết quả**
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-```bash
-# Chạy tất cả các bài test
-npx playwright test
+## Learn More
 
-# Chạy test có giao diện trực quan (UI Mode)
-npx playwright test --ui
-```
+To learn more about Next.js, take a look at the following resources:
 
-**2. Xem Video và Screenshot**
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-Sau khi test hoàn tất, nếu có cấu hình quay video và chụp ảnh, các file kết quả sẽ nằm trong thư mục `test-results/`.
-Bạn có thể xem báo cáo HTML bằng lệnh:
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-```bash
-npx playwright show-report
-```
+## Deploy on Vercel
 
----
-*Được phát triển với phong cách thiết kế hiện đại, tốc độ cao và tối ưu UI/UX.*
-"# vicicheckin" 
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

@@ -1,65 +1,48 @@
-import type { Metadata, Viewport } from "next";
-import { DM_Sans } from "next/font/google";
+import type { Metadata } from "next";
+import { Outfit } from "next/font/google";
 import "./globals.css";
-import Script from "next/script";
+import { SmoothScroll } from "@/components/animations/SmoothScroll";
+import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
+import { FloatingContact } from "@/components/FloatingContact";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
-const dmSans = DM_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
-  variable: "--font-dm-sans",
-});
-
-export const viewport: Viewport = {
-  themeColor: "#000000",
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-};
+const outfit = Outfit({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Nail Book 24/7 | The New Standard for Nail & Spa Management",
-  description: "An invisible yet powerful 24/7 booking solution. Automate appointments, elevate your brand, and free up your time with Nail Book 24/7.",
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "Nail Book 24/7",
+  title: {
+    template: "%s | Nail Book LLC",
+    default: "Nail Book LLC - Giải Pháp Quản Lý & Marketing Tiệm Nail",
   },
+  description: "Bứt phá doanh thu và lấp đầy lịch hẹn cho Salon của bạn với nền tảng quản lý toàn diện.",
 };
 
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "name": "Nail Book 24/7",
-  "applicationCategory": "BusinessApplication",
-  "description": "Comprehensive 24/7 booking solution and management system for Nail Salons and Spas.",
-  "url": "https://nailbook247.com"
-};
+import { getSystemSettings } from "@/lib/settings";
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const settings = await getSystemSettings();
+  const phone = settings.phone;
+
   return (
-    <html lang="en" className={`${dmSans.variable} h-full antialiased`} suppressHydrationWarning>
-      <head>
-        <link href="https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&display=swap" rel="stylesheet" />
-        <style dangerouslySetInnerHTML={{__html: `
-          :root {
-            --font-clash-display: 'Clash Display', sans-serif;
-          }
-        `}} />
-        <script dangerouslySetInnerHTML={{ __html: `window.zaloJSV2 = window.zaloJSV2 || {};` }} />
-      </head>
-      <body className="min-h-full flex flex-col bg-background text-foreground font-sans" suppressHydrationWarning>
-        <Script
-          id="schema-org"
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
-        {children}
+    <html lang="vi" className="scroll-smooth" suppressHydrationWarning>
+      <body className={`${outfit.className} min-h-screen flex flex-col`}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <SmoothScroll>
+            <Navbar phone={phone} />
+            <main className="flex-1">{children}</main>
+            <Footer />
+            <FloatingContact phone={phone} />
+          </SmoothScroll>
+        </ThemeProvider>
       </body>
     </html>
   );

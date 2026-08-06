@@ -103,7 +103,7 @@ export function HeroSlider({ dict }: HeroSliderProps) {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
                 </span>
-                Nail Book LLC - Hệ sinh thái tự động hoá số 1
+                Hệ sinh thái tự động hoá số 1
               </motion.div>
               
               <motion.h1 
@@ -163,7 +163,7 @@ export function HeroSlider({ dict }: HeroSliderProps) {
                   <div className="absolute inset-0 pt-0">
                     <Image
                       src={appSlides[current].image}
-                      alt={`Giao diện tính năng: ${appSlides[current].title} trên phần mềm quản lý Nail Book 24/7`}
+                      alt={appSlides[current].title}
                       fill
                       className="object-cover object-top"
                       priority
@@ -193,7 +193,7 @@ export function HeroSlider({ dict }: HeroSliderProps) {
                   <div className="absolute top-8 inset-0 bottom-0">
                     <Image
                       src={appSlides[current].image}
-                      alt={`Giao diện tính năng: ${appSlides[current].title} trên phần mềm quản lý Nail Book 24/7`}
+                      alt={appSlides[current].title}
                       fill
                       className="object-cover object-top"
                       priority

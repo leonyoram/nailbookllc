@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Scissors, MapPin, Phone, Mail, Clock } from "lucide-react";
 
-import { getSystemSettings } from "@/lib/landing_settings";
+import { getSystemSettings } from "@/lib/settings";
 
 export async function Footer() {
   const settings = await getSystemSettings();
@@ -15,7 +15,7 @@ export async function Footer() {
             <div className="relative h-16 w-52 md:h-20 md:w-60">
               <Image 
                 src="/images/Logo/Nail Book LLC Transparent.png" 
-                alt="Nail Book 24/7 - Phần mềm quản lý tiệm Nail và Spa chuyên nghiệp" 
+                alt="Nail Book LLC Logo" 
                 fill
                 className="object-contain object-left"
               />

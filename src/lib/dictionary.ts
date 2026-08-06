@@ -11,11 +11,11 @@ export const DICTIONARY = {
       contact: "Nhận Tư Vấn",
     },
     hero: {
-      titleLine1: "Phần Mềm Quản Lý",
-      titleLine2: "Dành Riêng Cho Tiệm Nail",
-      subtitle: "Nền tảng đặt lịch 24/7, tự động thu cọc Deposit, chia Commission cho thợ và kéo khách cũ quay lại. Giải pháp toàn diện cho chủ tiệm người Việt tại Bắc Mỹ.",
-      ctaPrimary: "Bắt Đầu Dùng Thử",
-      ctaSecondary: "Xem Video Demo",
+      titleLine1: "Tiệm Của Bạn. Khách Của Bạn.",
+      titleLine2: "Lợi Nhuận Của Bạn.",
+      subtitle: "Hệ thống đặt lịch trực tuyến & quản lý tiệm Nail do chính bạn làm chủ. Không bị chia sẻ khách hàng (như các Marketplace), không thu phí hoa hồng trên mỗi lịch hẹn. Giao diện quản lý tiếng Việt, khách Tây đặt lịch tiếng Anh.",
+      ctaPrimary: "Dùng Thử Miễn Phí",
+      ctaSecondary: "Xem Demo Thực Tế",
       stats: {
         owners: "Chủ Tiệm Tin Dùng",
         revenue: "Tăng Doanh Thu",
@@ -25,14 +25,35 @@ export const DICTIONARY = {
     features: {
       sectionTitle: "Vận Hành Thong Rong",
       sectionSubtitle: "Tạm biệt sổ sách lộn xộn. Tự động hóa mọi thứ từ A-Z với các tính năng đột phá.",
-      feat1Title: "Đặt Lịch 24/7 & Cọc Tự Động",
-      feat1Desc: "Khách hàng tự do đặt lịch bất cứ lúc nào qua website/app. Hệ thống tự động thu tiền cọc (Deposit) qua thẻ, bảo vệ doanh thu cho salon của bạn khỏi những kẻ bùng lịch.",
-      feat2Title: "Tính Lương Tự Động",
-      feat2Desc: "Chấm công chính xác, tự động chia Commission, tính Check/Tiền mặt, tiền Tip. Xuất báo cáo cực chuẩn cho thợ W-2 và thợ 1099, khai thuế IRS dễ dàng.",
-      feat3Title: "Marketing SMS",
-      feat3Desc: "Tự động gửi SMS nhắc lịch hẹn trước 24h, chúc mừng sinh nhật, gửi mã khuyến mãi kéo khách quay lại.",
-      feat4Title: "Quản Lý Đa Chi Nhánh",
-      feat4Desc: "Kiểm soát toàn bộ hoạt động kinh doanh, doanh thu của nhiều chi nhánh từ xa ngay trên lòng bàn tay.",
+      feat1Title: "Không Marketplace Bán Lead",
+      feat1Desc: "Giữ chân khách hàng của riêng tiệm bạn, không sợ đối thủ cạnh tranh cướp khách trên cùng nền tảng.",
+      feat2Title: "SMS Nhắc Lịch (Tiếng Anh)",
+      feat2Desc: "Giảm thiểu tối đa tình trạng 'No-show' (Khách không đến). Tự động gửi tin nhắn xác nhận và nhắc nhở bằng tiếng Anh chuẩn xác.",
+      feat3Title: "Nhận Cọc Trực Tiếp",
+      feat3Desc: "Nhận cọc qua Stripe, Zelle, Venmo... Tiền về thẳng túi chủ tiệm, hệ thống không giữ tiền.",
+      feat4Title: "Hệ Thống Đa Ngôn Ngữ",
+      feat4Desc: "Bạn quản lý tiệm bằng Tiếng Việt thân thuộc, nhưng khách hàng và thợ vẫn có thể dùng Tiếng Anh.",
+    },
+    philosophy: {
+      title: "Tiệm của bạn. Khách của bạn. Tiền của bạn. Quy tắc của bạn.",
+      subtitle: "Chúng tôi không phải marketplace bán lead. Bạn sở hữu kênh đặt lịch mang thương hiệu riêng, quản lý dữ liệu khách hàng tuyệt đối và nhận tiền trực tiếp không qua lưu ký.",
+      points: [
+        { title: "Giữ quan hệ trực tiếp", desc: "Khách đặt qua link riêng của tiệm, dữ liệu thuộc về bạn." },
+        { title: "Tự chọn cách nhận tiền", desc: "Nhận qua Stripe, Zelle, Tiền mặt - linh hoạt hoàn toàn." },
+        { title: "Chủ động liên hệ", desc: "Dễ dàng gọi điện, SMS, nhắc lịch khách hàng." },
+        { title: "Bảo vệ Workspace", desc: "Phân quyền nhân viên chặt chẽ, bảo vệ thông tin tiệm." }
+      ]
+    },
+    workflow: {
+      title: "Chỉ 42 giây từ lúc khách xem lịch đến lúc thanh toán",
+      subtitle: "Trải nghiệm quy trình mượt mà từ góc độ khách hàng đến thông báo của chủ tiệm.",
+      steps: [
+        { time: "00:00", title: "Lịch Tiệm", desc: "Thể hiện rõ các khung giờ trống của thợ." },
+        { time: "00:15", title: "Khách Chọn Dịch Vụ", desc: "Khách tự book giờ, chọn thợ trên giao diện tiếng Anh." },
+        { time: "00:24", title: "Cọc Tiền Stripe", desc: "Khách nhập thẻ giữ chỗ, chống No-show." },
+        { time: "00:32", title: "Gửi SMS Nhắc Lịch", desc: "Khách nhận ngay tin nhắn xác nhận." },
+        { time: "00:38", title: "Doanh Thu Tự Động", desc: "Tiền đổ về tài khoản chủ tiệm, ghi nhận trên Dashboard." }
+      ]
     },
     showcase: {
       title: "Thiết Kế Đẳng Cấp Thế Giới",
@@ -77,11 +98,11 @@ export const DICTIONARY = {
       contact: "Get Consultation",
     },
     hero: {
-      titleLine1: "All-in-One Management",
-      titleLine2: "For Nail Salons",
-      subtitle: "24/7 Booking platform, automated deposit collection, tech commission splitting, and client retention tools. The complete solution for Vietnamese salon owners in North America.",
+      titleLine1: "Your Salon. Your Clients.",
+      titleLine2: "Your Profit.",
+      subtitle: "The online booking & salon management system you truly own. No sharing clients (unlike Marketplaces), zero commission fees per booking. Manage in Vietnamese, while clients book in English.",
       ctaPrimary: "Start Free Trial",
-      ctaSecondary: "Watch Demo Video",
+      ctaSecondary: "Watch Live Demo",
       stats: {
         owners: "Trusted Owners",
         revenue: "Revenue Increase",
@@ -91,14 +112,35 @@ export const DICTIONARY = {
     features: {
       sectionTitle: "Effortless Operations",
       sectionSubtitle: "Say goodbye to messy paperwork. Automate everything from A-Z with breakthrough features.",
-      feat1Title: "24/7 Booking & Auto Deposits",
-      feat1Desc: "Clients can book anytime via your website/app. The system automatically collects card deposits, protecting your salon's revenue from no-shows.",
-      feat2Title: "Automated Payroll",
-      feat2Desc: "Accurate time-tracking, automated commission splits, Check/Cash calculation, and Tips. Generate perfect reports for W-2 and 1099 techs for easy IRS tax filing.",
-      feat3Title: "SMS Marketing",
-      feat3Desc: "Automatically send 24h appointment reminders, birthday wishes, and promotional coupons to bring clients back.",
-      feat4Title: "Multi-Location Management",
-      feat4Desc: "Control your entire business operations and revenue across multiple branches remotely, right from the palm of your hand.",
+      feat1Title: "Not a Lead Marketplace",
+      feat1Desc: "Keep your clients yours. No fear of competitors stealing clients on the same platform.",
+      feat2Title: "English SMS Reminders",
+      feat2Desc: "Minimize 'No-shows'. Automatically send accurate confirmation and reminder texts in English.",
+      feat3Title: "Direct Deposits",
+      feat3Desc: "Accept deposits via Stripe, Zelle, Venmo. Money goes straight to your pocket, non-custodial.",
+      feat4Title: "Multi-Language System",
+      feat4Desc: "Manage your salon in familiar Vietnamese, while your clients and techs use English.",
+    },
+    philosophy: {
+      title: "Your Salon. Your Clients. Your Money. Your Rules.",
+      subtitle: "We are not a lead-selling marketplace. You own your branded booking channel, manage customer data completely, and receive direct non-custodial payments.",
+      points: [
+        { title: "Direct Relationships", desc: "Clients book through your own link, data belongs to you." },
+        { title: "Choose Your Payment", desc: "Accept Stripe, Zelle, Cash - complete flexibility." },
+        { title: "Proactive Contact", desc: "Easily call, SMS, and remind clients." },
+        { title: "Protect Workspace", desc: "Strict staff permissions, protecting salon info." }
+      ]
+    },
+    workflow: {
+      title: "Only 42 seconds from calendar view to paid booking",
+      subtitle: "Experience a seamless process from the customer's perspective to the owner's notification.",
+      steps: [
+        { time: "00:00", title: "Salon Calendar", desc: "Clearly displays available time slots for techs." },
+        { time: "00:15", title: "Client Selects Service", desc: "Client books time and selects tech on an English interface." },
+        { time: "00:24", title: "Stripe Deposit", desc: "Client enters card to secure spot, preventing No-shows." },
+        { time: "00:32", title: "SMS Reminder Sent", desc: "Client immediately receives a confirmation text." },
+        { time: "00:38", title: "Automated Revenue", desc: "Money goes to the owner's account, logged on the Dashboard." }
+      ]
     },
     showcase: {
       title: "World-Class Design",

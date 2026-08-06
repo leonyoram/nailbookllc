@@ -7,6 +7,7 @@ import Image from "next/image";
 import { Menu, X, Globe, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { setLanguage } from "@/app/landing-site/actions/locale";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const getNavLinks = (lang: string) => {
   if (lang === "EN") {
@@ -73,9 +74,9 @@ export function Navbar({ phone = "+18325988899" }: { phone?: string }) {
 
   return (
     <header
-      className={`fixed top-0 w-full z-50 transition-all duration-300 ${
+      className={`fixed top-0 w-full z-50 transition-all duration-500 ${
         isScrolled
-          ? "bg-background/80 backdrop-blur-md border-b shadow-sm"
+          ? "bg-background/60 backdrop-blur-xl border-b shadow-[0_8px_32px_rgba(0,0,0,0.08)] border-white/20 dark:border-white/10 dark:shadow-[0_8px_32px_rgba(255,255,255,0.02)]"
           : "bg-transparent"
       }`}
     >
@@ -84,7 +85,7 @@ export function Navbar({ phone = "+18325988899" }: { phone?: string }) {
           <div className="relative h-14 w-44 md:h-16 md:w-52">
             <Image 
               src="/images/Logo/Nail Book LLC Transparent.png" 
-              alt="Nail Book 24/7 - Phần mềm quản lý tiệm Nail và Spa chuyên nghiệp" 
+              alt="Nail Book LLC Logo" 
               fill
               className={`object-contain object-left transition-all duration-300 ${isHeaderTransparent ? "brightness-0 invert opacity-90" : ""}`}
             />
@@ -147,6 +148,10 @@ export function Navbar({ phone = "+18325988899" }: { phone?: string }) {
               </button>
             </div>
           </div>
+          
+          <div className={`border-l pl-2 transition-colors ${isHeaderTransparent ? "border-white/20 text-white" : "border-slate-200 text-slate-700"}`}>
+            <ThemeToggle />
+          </div>
         </nav>
 
         {/* Mobile Nav Toggle */}
@@ -178,18 +183,21 @@ export function Navbar({ phone = "+18325988899" }: { phone?: string }) {
             <div className="relative h-10 w-36">
               <Image 
                 src="/images/Logo/Nail Book LLC Transparent.png" 
-                alt="Nail Book 24/7 - Phần mềm quản lý tiệm Nail và Spa chuyên nghiệp" 
+                alt="Nail Book LLC Logo" 
                 fill
                 className="object-contain object-left"
               />
             </div>
           </Link>
-          <button
-            className="p-2 text-slate-500 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors"
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            <X className="h-6 w-6" />
-          </button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <button
+              className="p-2 text-slate-500 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
         </div>
 
         {/* Drawer Body (Links) */}

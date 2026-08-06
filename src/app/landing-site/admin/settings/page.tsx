@@ -3,10 +3,10 @@ import { updateSystemSettings } from "@/app/landing-site/actions/settings";
 import { Button } from "@/components/ui/button";
 
 export default async function SettingsPage() {
-  const settings = await prisma.systemSettings.findUnique({ where: { id: "global" } });
+  const settings = await prisma.systemSetting.findMany();
   
-  const phoneSetting = settings?.contactPhone || "+18325988899";
-  const emailSetting = settings?.contactEmail || "hello@nailbook.com";
+  const phoneSetting = settings.find((s) => s.key === "CONTACT_PHONE")?.value || "+18325988899";
+  const emailSetting = settings.find((s) => s.key === "CONTACT_EMAIL")?.value || "hello@nailbook.com";
 
   return (
     <div className="max-w-4xl mx-auto">

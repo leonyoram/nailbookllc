@@ -4,14 +4,8 @@ import Script from "next/script";
 import { cookies } from "next/headers";
 import { HeroSlider } from "@/components/home/HeroSlider";
 import { getServices, getPricingPlans, getTestimonials, getFaqs } from "@/lib/constants";
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "Phần mềm quản lý tiệm Nail toàn diện",
-  description: "Khám phá giải pháp quản lý tiệm nail thông minh giúp tự động hóa lịch hẹn, tính lương, và gửi tin nhắn nhắc lịch tự động. Tăng 30% doanh thu ngay hôm nay!",
-};
 import { getDictionary } from "@/lib/dictionary";
-import { CheckCircle2, Star, ChevronRight, Calendar, MessageSquare, Wallet, Globe, ArrowRight } from "lucide-react";
+import { CheckCircle2, Star, ChevronRight, Calendar, MessageSquare, Wallet, Globe, ArrowRight, ShieldCheck, DatabaseZap, Users, PlayCircle, Clock } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -19,7 +13,10 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
-
+export const metadata = {
+  title: "Trang Chủ | Nail Book LLC",
+  description: "Nền tảng đặt lịch 24/7, tự động thu cọc Deposit, chia hoa hồng cho thợ và kéo khách cũ quay lại dành riêng cho Tiệm Nail, Hair Salon, Spa.",
+};
 
 
 
@@ -53,10 +50,8 @@ export default async function HomePage() {
   };
 
   return (
-    <>
-      <h1 className="sr-only">Nail Book LLC - Giải Pháp Quản Lý Tiệm Nail Toàn Diện 24/7</h1>
-      <div className="flex flex-col min-h-screen selection:bg-primary/20 selection:text-primary overflow-hidden">
-        <Script
+    <div className="flex flex-col min-h-screen selection:bg-primary/20 selection:text-primary overflow-hidden">
+      <Script
         id="faq-schema"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -140,6 +135,33 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* 2.5 Core Philosophy (Triết lý vận hành) */}
+      <section className="py-24 px-4 bg-[linear-gradient(135deg,#f7f8f3_0%,#eef8f2_58%,#fff9ed_100%)] relative overflow-hidden">
+        <div className="absolute -right-28 -top-32 w-80 h-80 rounded-full bg-[#fdd166]/25 blur-3xl pointer-events-none"></div>
+        <div className="absolute -bottom-36 -left-24 w-80 h-80 rounded-full bg-[#91d6aa]/20 blur-3xl pointer-events-none"></div>
+        
+        <div className="container mx-auto max-w-7xl relative z-10">
+          <p className="text-sm font-black uppercase tracking-[0.16em] text-primary mb-4">Hệ thống đặt lịch do chủ tiệm kiểm soát</p>
+          <h2 className="text-3xl md:text-5xl lg:text-5xl font-black mb-6 text-slate-900 leading-tight max-w-5xl">{dict.philosophy.title}</h2>
+          <p className="text-lg md:text-xl text-slate-700 max-w-4xl font-medium mb-12">{dict.philosophy.subtitle}</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {dict.philosophy.points.map((point: any, idx: number) => {
+              const icons = [<Users className="w-6 h-6"/>, <DatabaseZap className="w-6 h-6"/>, <MessageSquare className="w-6 h-6"/>, <ShieldCheck className="w-6 h-6"/>];
+              return (
+                <article key={idx} className="rounded-3xl border border-[#dbe9df] bg-white/95 p-6 shadow-xl shadow-primary/5 transition duration-300 hover:-translate-y-2 hover:border-primary/40">
+                  <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white shadow-lg ring-4 ring-primary/10 mb-6">
+                    {icons[idx]}
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900 mb-3">{point.title}</h3>
+                  <p className="text-slate-600 font-medium leading-relaxed">{point.desc}</p>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
       {/* 3. App Showcase (Giao Diện Thân Thiện) */}
       <section className="py-24 px-4 bg-white relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-slate-100 via-white to-white -z-10"></div>
@@ -184,6 +206,68 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* 3.5 Workflow Speed (Quy trình 42 giây) */}
+      <section className="py-24 px-4 bg-white border-y border-slate-100">
+        <div className="container mx-auto max-w-7xl">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-bold text-primary mb-6">
+                <PlayCircle className="w-5 h-5" />
+                Demo sản phẩm
+              </div>
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-black mb-6 text-slate-900 leading-tight">{dict.workflow.title}</h2>
+              <p className="text-lg font-medium text-slate-600 mb-8">{dict.workflow.subtitle}</p>
+              
+              <div className="space-y-4">
+                {dict.workflow.steps.map((step: any, idx: number) => (
+                  <div key={idx} className={`flex gap-4 p-5 rounded-2xl border transition-all ${idx === 2 ? 'border-primary bg-primary/5 shadow-md' : 'border-slate-100 bg-white hover:border-primary/30 hover:bg-slate-50'}`}>
+                    <div className="text-primary font-black text-sm shrink-0 w-12 pt-1">{step.time}</div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900 mb-1">{step.title}</h3>
+                      <p className="text-slate-600 font-medium leading-relaxed text-sm md:text-base">{step.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Simulation UI block */}
+            <div className="bg-slate-900 p-6 md:p-8 rounded-[2rem] shadow-2xl relative overflow-hidden text-white border border-slate-800">
+              <div className="absolute top-0 right-0 p-8 opacity-10">
+                <Clock className="w-64 h-64 text-primary" />
+              </div>
+              
+              <div className="flex items-center gap-2 mb-8 border-b border-white/10 pb-4">
+                <span className="h-3 w-3 rounded-full bg-red-500"></span>
+                <span className="h-3 w-3 rounded-full bg-yellow-500"></span>
+                <span className="h-3 w-3 rounded-full bg-green-500"></span>
+                <span className="ml-4 rounded-full bg-white/10 px-3 py-1 text-xs font-bold">00:42 walkthrough</span>
+              </div>
+
+              <div className="grid gap-6">
+                <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/10">
+                  <span className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 block">Checkout</span>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center bg-white/10 rounded-xl p-4">
+                      <span className="font-medium text-slate-200">Deposit</span>
+                      <span className="font-bold text-white">$25.00</span>
+                    </div>
+                    <div className="flex justify-between items-center bg-primary/20 border border-primary/30 rounded-xl p-4">
+                      <span className="font-medium text-primary-200">Stripe</span>
+                      <span className="font-bold text-primary-100">Ready</span>
+                    </div>
+                    <div className="flex justify-between items-center bg-amber-500/20 border border-amber-500/30 rounded-xl p-4">
+                      <span className="font-medium text-amber-200">SMS</span>
+                      <span className="font-bold text-amber-100">Queued</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* 4. Pricing (Bảng Giá Dịch Vụ) */}
       <section className="py-24 px-4 bg-slate-50">
         <div className="container mx-auto max-w-6xl">
@@ -191,27 +275,42 @@ export default async function HomePage() {
             <h2 className="text-3xl md:text-5xl font-extrabold mb-6 text-slate-900">{dict.pricing.title}</h2>
             <p className="text-xl text-slate-600 max-w-2xl mx-auto">{dict.pricing.subtitle}</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-center">
             {PRICING_PLANS.map((plan, idx) => (
-              <div key={idx} className={`relative p-8 md:p-10 rounded-3xl bg-white border flex flex-col transition-all hover:shadow-2xl ${plan.highlight ? 'border-rose-500 shadow-xl ring-4 ring-rose-500/20 md:scale-105 z-10 py-12' : 'border-slate-200 shadow-sm'}`}>
-                {plan.highlight && (
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-rose-500 text-white px-6 py-2 rounded-full text-sm font-bold shadow-md uppercase tracking-wider">{dict.pricing.recommended}</div>
+              <div key={idx} className={`relative p-6 md:p-8 rounded-3xl border flex flex-col transition-all hover:shadow-2xl ${plan.highlight ? 'bg-white border-rose-500 shadow-xl ring-4 ring-rose-500/20 md:scale-105 z-10' : 'bg-white border-slate-200 shadow-sm'}`}>
+                {plan.highlight ? (
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-rose-500 text-white px-6 py-1.5 rounded-full text-xs font-bold shadow-md uppercase tracking-wider whitespace-nowrap">{dict.pricing.recommended}</div>
+                ) : (
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{plan.desc}</p>
                 )}
-                <h3 className="text-2xl font-bold text-slate-900 mb-3">{plan.name}</h3>
-                <p className="text-slate-500 mb-8 min-h-[48px]">{plan.desc}</p>
-                <div className="mb-8 flex items-baseline gap-2">
+                
+                {plan.highlight && (
+                   <p className="text-xs font-bold text-rose-500 uppercase tracking-wider mt-4 mb-2">{plan.desc}</p>
+                )}
+
+                <h3 className="text-2xl font-black mb-2 text-slate-900">{plan.name}</h3>
+                
+                <div className="mb-1 flex items-baseline gap-1">
                   <span className="text-5xl font-extrabold text-slate-900">{plan.priceMonthly}</span>
-                  <span className="text-slate-500 font-medium">{dict.pricing.month}</span>
+                  <span className="font-bold text-sm text-slate-500">{plan.name === 'Free' ? '/tháng' : '/tiệm/tháng'}</span>
                 </div>
-                <div className="space-y-4 mb-10 flex-1">
+                
+                <div className="text-xs font-bold mb-6 text-slate-500">
+                  {plan.priceYearly} {plan.name === 'Free' ? 'hằng năm' : 'hằng năm — miễn 2 tháng'}
+                </div>
+                
+                <hr className={`border-t mb-6 ${plan.highlight ? 'border-rose-100' : 'border-slate-100'}`} />
+
+                <div className="space-y-4 mb-8 flex-1">
                   {plan.features.map((feat, i) => (
                     <div key={i} className="flex items-start gap-3">
                       <CheckCircle2 className={`w-5 h-5 shrink-0 mt-0.5 ${plan.highlight ? 'text-rose-500' : 'text-primary'}`} />
-                      <span className="text-slate-600 font-medium">{feat}</span>
+                      <span className="font-medium text-sm leading-relaxed text-slate-600">{feat}</span>
                     </div>
                   ))}
                 </div>
-                <Link href="/lien-he" className={`w-full flex justify-center items-center h-14 rounded-full font-bold text-lg transition-all hover:scale-105 ${plan.highlight ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30 hover:bg-rose-600' : 'bg-slate-100 text-slate-900 hover:bg-slate-200'}`}>
+                
+                <Link href="/lien-he" className={`w-full flex justify-center items-center h-12 rounded-full font-bold text-sm transition-all hover:scale-105 ${plan.highlight ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30 hover:bg-rose-600' : 'bg-slate-100 text-slate-900 hover:bg-slate-200'}`}>
                   {plan.cta}
                 </Link>
               </div>
@@ -298,6 +397,5 @@ export default async function HomePage() {
         </div>
       </section>
     </div>
-    </>
   );
 }
